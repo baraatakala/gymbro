@@ -385,7 +385,11 @@ export default function App() {
 
       <div className={hasPlan ? 'app-main--docked' : ''}>
         <div className="page-shell">
-          <Header quoteIndex={quoteIndex} />
+          <Header
+            quoteIndex={quoteIndex}
+            onQuoteIndexChange={(i) => setQuoteIndex(i)}
+            showMotivation={appView === 'workout'}
+          />
 
           <StatusStrip
             dataLabel={dataSourceLabel}
@@ -413,7 +417,8 @@ export default function App() {
         planExercises.length > 0 &&
         !sessionsLookCorrupt(workout.sessions) &&
         allTimeStats.totalSessions === 0 &&
-        !workout.sessions.some(sessionHasLoggedExercises) && (
+        !workout.sessions.some(sessionHasLoggedExercises) &&
+        !sessionCheckIn && (
           <div className="glass-panel mb-4 border-emerald-500/20 bg-emerald-950/20 px-4 py-3.5 text-sm text-slate-300">
             <p>
               <span className="font-medium text-slate-200">Getting started on {sectionName}:</span>{' '}
@@ -592,11 +597,13 @@ export default function App() {
               onOpenAnalytics={() => setAnalyticsOpen(true)}
             />
           ) : (
-            <SectionHero
-              sectionName={sectionName}
-              exerciseCount={planExercises.length}
-              savedCount={savedCount}
-            />
+            <div className="lg:hidden">
+              <SectionHero
+                sectionName={sectionName}
+                exerciseCount={planExercises.length}
+                savedCount={savedCount}
+              />
+            </div>
           )}
 
           <WorkoutSessionBar
@@ -769,8 +776,10 @@ export default function App() {
                     Today · {sectionName}
                   </p>
                   {savedCount === 0 && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Save an exercise below to start tracking today.
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      {sessionCheckIn
+                        ? `Checked in at ${formatSessionTime(sessionCheckIn)}. Expand an exercise, log sets, and tap Save.`
+                        : 'Pick a section or save a set to start today’s stats.'}
                     </p>
                   )}
                   <div className="mt-4 grid grid-cols-2 gap-3">

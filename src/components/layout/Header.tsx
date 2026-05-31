@@ -1,4 +1,4 @@
-import { QuoteGallery } from './QuoteGallery'
+import { QUOTE_IMAGES, QuoteGallery } from './QuoteGallery'
 
 const QUOTES = [
   'Push yourself — no one else will do it for you.',
@@ -10,9 +10,18 @@ const QUOTES = [
 
 interface HeaderProps {
   quoteIndex: number
+  onQuoteIndexChange?: (index: number) => void
+  /** Motivation images distract on data-heavy views */
+  showMotivation?: boolean
 }
 
-export function Header({ quoteIndex }: HeaderProps) {
+export function Header({
+  quoteIndex,
+  onQuoteIndexChange,
+  showMotivation = true,
+}: HeaderProps) {
+  const textQuote = QUOTES[quoteIndex % QUOTES.length]
+
   return (
     <header className="page-header mb-4 sm:mb-5">
       <div className="page-header-main">
@@ -24,19 +33,31 @@ export function Header({ quoteIndex }: HeaderProps) {
           GymBro
         </p>
         <h1 className="page-title">Workout Tracker</h1>
-        <p className="page-tagline">{QUOTES[quoteIndex % QUOTES.length]}</p>
+        <p className="page-tagline">{textQuote}</p>
       </div>
 
-      <details className="quote-panel-desktop hidden lg:block">
-        <summary className="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-300">
-          Motivation
-        </summary>
-        <QuoteGallery variant="compact" />
-      </details>
+      {showMotivation && (
+      <aside className="motivation-aside hidden lg:block" aria-label="Motivation quotes">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          Daily spark
+        </p>
+        <QuoteGallery
+          variant="featured"
+          activeIndex={quoteIndex % QUOTE_IMAGES.length}
+          onIndexChange={onQuoteIndexChange}
+        />
+      </aside>
+      )}
 
+      {showMotivation && (
       <div className="lg:hidden">
-        <QuoteGallery variant="carousel" />
+        <QuoteGallery
+          variant="carousel"
+          activeIndex={quoteIndex % QUOTE_IMAGES.length}
+          onIndexChange={onQuoteIndexChange}
+        />
       </div>
+      )}
     </header>
   )
 }

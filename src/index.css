@@ -88,8 +88,24 @@
     @apply mx-auto mt-1 max-w-lg text-sm text-slate-400 lg:mx-0 lg:max-w-xl lg:text-[13px];
   }
 
-  .quote-panel-desktop {
-    @apply w-[min(100%,280px)] shrink-0 rounded-xl border border-slate-800/60 bg-slate-900/40 px-3 py-2;
+  .motivation-aside {
+    @apply w-[min(100%,17.5rem)] shrink-0;
+  }
+
+  .motivation-featured {
+    @apply rounded-xl border border-slate-800/70 bg-slate-950/90 p-2 shadow-lg shadow-black/30;
+  }
+
+  .motivation-featured-frame {
+    @apply relative block w-full overflow-hidden rounded-lg bg-slate-950 ring-1 ring-slate-700/50 transition hover:ring-emerald-500/40;
+  }
+
+  .motivation-featured-img {
+    @apply aspect-[5/3] w-full object-contain object-center;
+  }
+
+  .motivation-featured-zoom {
+    @apply pointer-events-none absolute bottom-1.5 right-1.5 rounded-md bg-slate-950/80 px-1.5 py-0.5 text-[9px] font-medium text-slate-400 opacity-0 transition group-hover:opacity-100;
   }
 
   .workout-layout {

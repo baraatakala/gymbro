@@ -34,16 +34,38 @@ export function WorkoutSessionBar({
   const canFinish = savedCount > 0 && !sessionComplete
   const pct = Math.round((savedCount / totalExercises) * 100)
 
+  const circumference = 2 * Math.PI * 20
+  const offset = circumference - (pct / 100) * circumference
+
   return (
     <div className="mb-4 hidden rounded-2xl border border-emerald-900/50 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950 p-4 lg:block">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="min-w-[140px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500/90">
-            Gym session
-          </p>
-          <p className="mt-0.5 text-base font-semibold text-white">
-            {meta.emoji} {sectionName}
-          </p>
+        <div className="flex min-w-[10rem] items-center gap-3">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
+            <svg className="h-11 w-11 -rotate-90" viewBox="0 0 44 44" aria-hidden>
+              <circle cx="22" cy="22" r="20" fill="none" className="stroke-slate-800" strokeWidth="3" />
+              <circle
+                cx="22"
+                cy="22"
+                r="20"
+                fill="none"
+                className={meta.ringClass}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+              />
+            </svg>
+            <span className="absolute text-[10px] font-bold tabular-nums text-white">{pct}%</span>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500/90">
+              Gym session
+            </p>
+            <p className="text-base font-semibold text-white">
+              {meta.emoji} {sectionName}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-6 text-sm">
