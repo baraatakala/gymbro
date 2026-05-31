@@ -10,6 +10,7 @@ import { Toast } from './components/ui/Toast'
 import { LoadingSkeleton } from './components/ui/LoadingSkeleton'
 import { FeatureExplorer } from './components/roadmap/FeatureExplorer'
 import { DayManager } from './components/workout/DayManager'
+import { SectionRail } from './components/workout/SectionRail'
 import { ExerciseCard } from './components/workout/ExerciseCard'
 import { ExerciseLibraryModal } from './components/workout/ExerciseLibraryModal'
 import { QuickAddExercise } from './components/workout/QuickAddExercise'
@@ -474,8 +475,63 @@ export default function App() {
         />
       )}
 
-      {appView === 'workout' && hasPlan && (
-        <>
+      {appView === 'workout' && hasPlan && activeDay && (
+        <div className="workout-layout">
+          <SectionRail
+            days={workout.plan.days}
+            activeDayId={activeDayId || activeDay.id}
+            activeDayName={sectionName}
+            resetting={workout.busy}
+            repairing={workout.busy}
+            onSelectDay={selectDay}
+            onAddDay={async (name) => {
+              try {
+                const d = await workout.addDay(name)
+                selectDay(d.id, d.name)
+                show(`Section "${name}" created`, 'success')
+              } catch (e) {
+                show(e instanceof Error ? e.message : 'Failed', 'error')
+              }
+            }}
+            onRenameDay={async (id, name) => {
+              try {
+                await workout.renameDay(id, name)
+                setDayName(name)
+                show('Section renamed', 'success')
+              } catch (e) {
+                show(e instanceof Error ? e.message : 'Failed', 'error')
+              }
+            }}
+            onDeleteDay={async (id) => {
+              try {
+                const first = await workout.removeDay(id)
+                if (first) selectDay(first.id, first.name)
+                show('Section deleted', 'success')
+              } catch (e) {
+                show(e instanceof Error ? e.message : 'Failed', 'error')
+              }
+            }}
+            onResetPlan={async () => {
+              if (
+                !window.confirm(
+                  'Replace your program with the default 14 sections?\n\nSaved workout history and PRs are kept — only the exercise list per section changes.',
+                )
+              ) {
+                return
+              }
+              await handleInitPlan()
+            }}
+            onRepairEmpty={async () => {
+              try {
+                await workout.repairEmpty()
+                show('Empty sections filled from library', 'success')
+              } catch (e) {
+                show(e instanceof Error ? e.message : 'Repair failed', 'error')
+              }
+            }}
+          />
+
+          <div className="workout-main">
           {planExercises.length === 0 ? (
             <SectionStatsBar
               sectionName={sectionName}
@@ -528,7 +584,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(360px,32%)] lg:items-start lg:gap-8">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_min(300px,28%)] lg:items-start lg:gap-5 xl:gap-6">
             <main className="relative space-y-4" key={`${activeDayId}-${prefillKey}`}>
               {workout.sessionsLoading && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-slate-950/50 pt-12 backdrop-blur-[2px]">
@@ -755,7 +811,8 @@ export default function App() {
               </div>
             </aside>
           </div>
-        </>
+          </div>
+        </div>
       )}
 
       {appView === 'workout' && hasPlan && planExercises.length > 0 && (
@@ -771,8 +828,6 @@ export default function App() {
           onOpenAnalytics={() => setAnalyticsOpen(true)}
         />
       )}
-
-        </div>
 
       <Sidebar
         open={sidebarOpen}
@@ -880,6 +935,7 @@ export default function App() {
       <FeatureExplorer open={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
 
       {toast && <Toast message={toast.message} tone={toast.tone} />}
+        </div>
       </div>
     </>
   )

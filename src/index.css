@@ -46,15 +46,15 @@
 
 @layer components {
   .page-shell {
-    @apply mx-auto w-full max-w-6xl px-4 pb-40 pt-6 sm:px-6 sm:pb-32 sm:pt-8 lg:pb-28;
+    @apply mx-auto w-full max-w-6xl px-4 pb-40 pt-4 sm:px-5 sm:pb-32 sm:pt-5 lg:max-w-none lg:px-6 lg:pb-24 lg:pt-4 xl:px-8;
   }
 
   .app-main--docked {
-    @apply lg:pl-[4.75rem];
+    @apply lg:pl-[4.75rem] xl:pl-[5.25rem];
   }
 
   .app-dock-desktop {
-    @apply fixed left-0 top-0 z-40 hidden h-full w-[4.75rem] flex-col border-r border-slate-800/80 bg-slate-950/95 px-2 py-6 shadow-xl backdrop-blur-xl lg:flex;
+    @apply fixed left-0 top-0 z-40 hidden h-full w-[4.75rem] flex-col border-r border-slate-800/80 bg-slate-950/95 px-2 py-5 shadow-xl backdrop-blur-xl lg:flex xl:w-[5.25rem];
     padding-top: max(1.5rem, env(safe-area-inset-top));
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
@@ -65,7 +65,51 @@
   }
 
   .app-main--docked .page-shell {
-    @apply pb-36 lg:pb-28;
+    @apply pb-36 lg:pb-20;
+  }
+
+  .page-header {
+    @apply lg:flex lg:items-start lg:justify-between lg:gap-8;
+  }
+
+  .page-header-main {
+    @apply text-center lg:min-w-0 lg:flex-1 lg:text-left;
+  }
+
+  .brand-pill {
+    @apply mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300;
+  }
+
+  .page-title {
+    @apply bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-xl font-bold tracking-tight text-transparent sm:text-2xl lg:text-[1.35rem];
+  }
+
+  .page-tagline {
+    @apply mx-auto mt-1 max-w-lg text-sm text-slate-400 lg:mx-0 lg:max-w-xl lg:text-[13px];
+  }
+
+  .quote-panel-desktop {
+    @apply w-[min(100%,280px)] shrink-0 rounded-xl border border-slate-800/60 bg-slate-900/40 px-3 py-2;
+  }
+
+  .workout-layout {
+    @apply lg:grid lg:grid-cols-[minmax(11rem,13.5rem)_minmax(0,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[14.5rem_minmax(0,1fr)] xl:gap-6;
+  }
+
+  .workout-main {
+    @apply min-w-0;
+  }
+
+  .section-rail {
+    @apply sticky top-4 flex max-h-[calc(100vh-6rem)] flex-col;
+  }
+
+  .section-rail-inner {
+    @apply flex min-h-0 flex-1 flex-col rounded-xl border border-slate-800/70 bg-slate-900/50 p-3 shadow-lg backdrop-blur-md;
+  }
+
+  .section-rail-list {
+    @apply flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700;
   }
 
   .glass-panel {
@@ -77,11 +121,11 @@
   }
 
   .btn-primary {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/40 transition hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-950/40 transition hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 lg:min-h-9;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-600/80 bg-slate-800/60 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-600/80 bg-slate-800/60 px-3.5 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 lg:min-h-9;
   }
 
   .btn-ghost {
@@ -89,7 +133,7 @@
   }
 
   .input-field {
-    @apply h-12 min-w-0 rounded-xl border border-slate-600/90 bg-slate-950/90 px-3 text-base text-white placeholder:text-slate-600 transition focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20;
+    @apply h-10 min-w-0 rounded-xl border border-slate-600/90 bg-slate-950/90 px-3 text-sm text-white placeholder:text-slate-600 transition focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20 lg:h-9 lg:text-sm;
   }
 
   .chip {
@@ -97,7 +141,7 @@
   }
 
   .section-tab {
-    @apply shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200;
+    @apply shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 sm:text-sm;
   }
 
   .section-tab-active {
@@ -109,7 +153,7 @@
   }
 
   .workout-dock {
-    @apply fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800/90 bg-slate-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:left-[4.75rem];
+    @apply fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800/90 bg-slate-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:left-[4.75rem] xl:left-[5.25rem];
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 

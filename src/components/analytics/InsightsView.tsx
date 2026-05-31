@@ -115,15 +115,12 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
   }
 
   return (
-    <div className="pb-8">
-      <div className="mb-6">
+    <div className="pb-6 lg:pb-4">
+      <div className="mb-4 lg:mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">Insights</p>
-        <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
-          Explore your training data
-        </h2>
-        <p className="mt-1 max-w-xl text-sm text-slate-400">
-          Tables, filters, sort, KPI toggles, CSV export. Use the left rail (desktop) or bottom bar
-          to switch back to Workout.
+        <h2 className="page-title mt-0.5">Explore your training data</h2>
+        <p className="page-tagline mt-1">
+          Tables, filters, sort, KPI toggles, CSV export.
         </p>
       </div>
 

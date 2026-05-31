@@ -35,8 +35,8 @@ export function StatusStrip({
   const connected = dataLabel.toLowerCase().includes('cloud sync')
 
   return (
-    <div className="glass-panel mb-5 overflow-hidden p-0 sm:mb-6">
-      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2 sm:py-3.5">
+    <div className="glass-panel mb-3 overflow-hidden p-0 sm:mb-4 lg:mb-3">
+      <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1.5 lg:px-4 lg:py-2">
         <span className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
           <span
             className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-500'}`}

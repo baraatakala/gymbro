@@ -7,28 +7,49 @@ const QUOTE_IMAGES = [
   { src: asset('quotes/quote4.webp'), alt: 'Motivation quote 4' },
 ]
 
-export function QuoteGallery() {
+interface QuoteGalleryProps {
+  variant?: 'carousel' | 'compact'
+}
+
+export function QuoteGallery({ variant = 'carousel' }: QuoteGalleryProps) {
+  if (variant === 'compact') {
+    return (
+      <div className="mt-2 grid grid-cols-4 gap-2">
+        {QUOTE_IMAGES.map((img) => (
+          <img
+            key={img.src}
+            src={img.src}
+            alt={img.alt}
+            loading="lazy"
+            decoding="async"
+            className="h-14 w-full rounded-lg border border-slate-700/50 object-cover"
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="mt-5 sm:mt-6">
+    <div className="mt-4 sm:mt-5">
       <div className="quote-scroll-fade -mx-1 px-1">
-        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUOTE_IMAGES.map((img) => (
             <figure
               key={img.src}
-              className="snap-center shrink-0 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900 shadow-lg ring-1 ring-white/5"
+              className="snap-center shrink-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 shadow-md"
             >
               <img
                 src={img.src}
                 alt={img.alt}
                 loading="lazy"
                 decoding="async"
-                className="h-[100px] w-[min(72vw,260px)] object-cover sm:h-[118px] sm:w-[280px]"
+                className="h-[72px] w-[min(64vw,200px)] object-cover sm:h-[88px] sm:w-[220px]"
               />
             </figure>
           ))}
         </div>
       </div>
-      <p className="mt-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-slate-600">
+      <p className="mt-1.5 text-center text-[10px] font-medium uppercase tracking-wider text-slate-600">
         Swipe for motivation
       </p>
     </div>

@@ -67,11 +67,9 @@ Apply migrations:
 
 
 ```bash
-
-npm run verify:attendance
-
-npm run verify:deploy
-
+npm run verify
 ```
+
+Runs attendance, insights, analytics, Supabase column probes (`started_at`, `logged_at`), and production build.
 
 

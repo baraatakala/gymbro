@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { WorkoutDayPlan } from '../../types/plan'
+import { filterDays, SectionTabButton } from './SectionPickerShared'
 
 interface DayManagerProps {
   days: WorkoutDayPlan[]
@@ -33,12 +34,9 @@ export function DayManager({
   const [renameValue, setRenameValue] = useState(activeDayName)
   const [tabSearch, setTabSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
-  const activeTabRef = useRef<HTMLButtonElement>(null)
+  const activeTabRef = useRef<HTMLDivElement>(null)
 
-  const filteredDays = days.filter((d) =>
-    d.name.toLowerCase().includes(tabSearch.trim().toLowerCase()),
-  )
-  const visibleDays = tabSearch ? filteredDays : days
+  const visibleDays = filterDays(days, tabSearch)
   const emptyCount = days.filter((d) => d.exercises.length === 0).length
 
   useEffect(() => {
@@ -54,7 +52,7 @@ export function DayManager({
   }, [activeDayId])
 
   return (
-    <div className="glass-panel-strong mb-6 p-4 sm:p-5">
+    <div className="glass-panel-strong mb-4 p-3 sm:p-4 lg:hidden">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-white">
           Workout sections{' '}
@@ -104,30 +102,15 @@ export function DayManager({
         ref={scrollRef}
         className="mb-3 flex gap-2 overflow-x-auto pb-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700"
       >
-        {visibleDays.map((d) => {
-          const isActive = d.id === activeDayId
-          const isEmpty = d.exercises.length === 0
-          return (
-            <button
-              key={d.id}
-              ref={isActive ? activeTabRef : undefined}
-              type="button"
-              onClick={() => onSelectDay(d.id, d.name)}
-              className={`section-tab ${
-                isActive
-                  ? 'section-tab-active'
-                  : isEmpty
-                    ? 'border border-amber-700/50 bg-amber-950/30 text-amber-200 hover:bg-amber-950/50'
-                    : 'section-tab-idle'
-              }`}
-            >
-              {d.name}
-              <span className={`ml-1 ${isActive ? 'opacity-90' : 'opacity-60'}`}>
-                ({d.exercises.length})
-              </span>
-            </button>
-          )
-        })}
+        {visibleDays.map((d) => (
+          <div key={d.id} ref={d.id === activeDayId ? activeTabRef : undefined} className="inline-flex">
+            <SectionTabButton
+              day={d}
+              isActive={d.id === activeDayId}
+              onSelect={() => onSelectDay(d.id, d.name)}
+            />
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-3">

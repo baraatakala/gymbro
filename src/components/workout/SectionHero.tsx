@@ -16,11 +16,11 @@ export function SectionHero({ sectionName, exerciseCount, savedCount }: SectionH
 
   return (
     <div
-      className={`mb-4 overflow-hidden rounded-2xl border px-5 py-4 shadow-lg ${meta.accentClass}`}
+      className={`mb-3 overflow-hidden rounded-xl border px-4 py-3 shadow-md lg:mb-2 lg:px-3 lg:py-2.5 ${meta.accentClass}`}
     >
-      <div className="flex items-center gap-4">
-        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
-          <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64" aria-hidden>
+      <div className="flex items-center gap-3 lg:gap-2.5">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center lg:h-10 lg:w-10">
+          <svg className="h-full w-full -rotate-90" viewBox="0 0 64 64" aria-hidden>
             <circle
               cx="32"
               cy="32"
@@ -41,19 +41,19 @@ export function SectionHero({ sectionName, exerciseCount, savedCount }: SectionH
               strokeDashoffset={offset}
             />
           </svg>
-          <span className="absolute text-sm font-bold text-white">
+          <span className="absolute text-xs font-bold text-white lg:text-[11px]">
             {pct}%
           </span>
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+          <p className="text-[10px] font-medium uppercase tracking-wider opacity-80 lg:text-[9px]">
             {meta.label} day
           </p>
-          <h2 className="truncate text-xl font-bold text-white">
+          <h2 className="truncate text-lg font-bold text-white lg:text-base">
             {meta.emoji} {sectionName}
           </h2>
-          <p className="mt-0.5 text-xs opacity-70">
+          <p className="mt-0.5 text-[11px] opacity-70 lg:hidden">
             {cardio
               ? 'Log duration in minutes per interval'
               : 'Log weight × reps for each set'}
@@ -61,11 +61,11 @@ export function SectionHero({ sectionName, exerciseCount, savedCount }: SectionH
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-3xl font-bold tabular-nums text-white">
+          <p className="text-2xl font-bold tabular-nums text-white lg:text-xl">
             {savedCount}
-            <span className="text-lg opacity-60">/{exerciseCount}</span>
+            <span className="text-base opacity-60 lg:text-sm">/{exerciseCount}</span>
           </p>
-          <p className="text-[10px] font-medium uppercase tracking-wider opacity-70">
+          <p className="text-[9px] font-medium uppercase tracking-wider opacity-70">
             {complete ? 'Complete ✓' : 'saved today'}
           </p>
         </div>
