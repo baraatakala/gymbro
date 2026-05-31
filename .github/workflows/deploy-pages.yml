@@ -1,14 +1,15 @@
-# Build Vite app and deploy to GitHub Pages (project site: /gymbro/)
 # https://baraatakala.github.io/gymbro/
-#
-# Pages must NOT use "main / (root)" — that serves dev index.html (/src/main.tsx).
-# Use either: GitHub Actions, OR "main /docs", OR "gh-pages / (root)".
+# Publishes built files to repo root (works with Pages: main / root) and docs/.
 
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'index.html'
+      - 'assets/**'
+      - 'docs/**'
   workflow_dispatch:
 
 env:
@@ -21,7 +22,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -45,22 +46,26 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      - name: Sync build to docs/ (for Pages: main → /docs)
+      - name: Publish built files (root + docs)
         run: |
-          rm -rf docs
+          rm -rf docs assets
           mkdir -p docs
           cp -r dist/* docs/
           touch docs/.nojekyll
+          cp dist/index.html index.html
+          cp dist/index.html docs/index.html
+          cp -r dist/assets assets
+          touch .nojekyll
 
-      - name: Commit docs folder
+      - name: Commit site output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs
+          git add index.html assets docs .nojekyll
           if git diff --staged --quiet; then
-            echo "docs unchanged"
+            echo "Site files unchanged"
           else
-            git commit -m "chore(pages): sync built app to docs/ [skip ci]"
+            git commit -m "chore(pages): update built site [skip ci]"
             git push
           fi
 
@@ -68,15 +73,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-
-      - name: Publish gh-pages branch
-        continue-on-error: true
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          force_orphan: true
 
   deploy:
     needs: build
