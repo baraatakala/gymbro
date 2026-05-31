@@ -1,39 +1,56 @@
 # Training habits & attendance
 
-Open **Sidebar → Training habits & attendance** (global, all sections).
+## How to open
 
-## Data sources
+| Entry point | Location |
+|-------------|----------|
+| Status strip | **📊 Habits** chip (when cloud/local data loaded) |
+| Sidebar | **Training habits & attendance** |
+| Section panel | **Training habits & attendance** button (under Section progress) |
+| Progress modal | Link to habits from **Section progress** |
 
-| Metric | Source |
-|--------|--------|
-| Gym visits / month | `training_days` + session days with logged sets |
-| Streak / longest streak | `trainingCalendar.ts` on distinct trained dates |
-| Avg time in gym | `started_at` → `finished_at`, or first→last set `logged_at` |
-| Check-in → first set | `started_at` (check-in) vs earliest `workout_sets.logged_at` |
-| Section frequency | Count sessions per `workout_sessions.day` |
-| Weekday skips | Lowest count by Mon–Sun in selected range |
-| Best hour | Hour of first set logged per session day |
-| Long rests | Gaps between set `logged_at` (30s–10min) + local rest timer log |
-| Weekly goal % | Weeks with ≥ N distinct gym days / weeks in range |
+## Feature matrix (integrated)
 
-## Check-in / check-out
+| Your question | UI location | Data source |
+|---------------|-------------|-------------|
+| Gym visits in month / custom period | Overview → Gym visits + date filters | `training_days` + sessions with sets |
+| Average time in gym | Overview → Avg time in gym | Check-in → last set / finish; estimates if same-second saves |
+| Which muscle / section days most | **Sections** tab → bars + list | `workout_sessions.day` |
+| Time per section | Sections → total time bars | Session duration per day |
+| Longest streak | Overview | `computeTrainingStreak` |
+| % weeks on 4-day (configurable) target | Overview → Weeks on target | Weekly buckets vs goal |
+| Check-in → first exercise | Overview | Local check-in + `started_at` vs `logged_at` |
+| Long rest between sets | **Patterns** tab | Set timestamps + rest timer log |
+| Days skipped / neglected | Overview banner + insights | Plan sections with 0 logs in range |
+| Least active weekday | **Patterns** tab | Mon–Sun counts (always 7 days) |
+| Best time to go | Overview → Best time to start | Hour of first set per day |
+| Calendar / heatmap | **Calendar** tab | `training_days` |
 
-- **Check-in:** switching section or saving first set → `recordLocalCheckIn` + `touchSessionCheckIn` → `started_at`
-- **Check-out:** **Finish workout** → `finished_at`, `status: completed`
+## Not in v1 (by design)
 
-Apply migrations in Supabase SQL editor if not applied:
+- GPS / gym location check-in
+- Line charts for attendance trends (section progress modal has exercise trends)
+- Hour × weekday heatmap (planned enhancement)
+- Automatic “skipped day” from a fixed weekly schedule (uses your 14 plan sections instead)
 
-- `20260531120000_session_timing_attendance.sql` — `started_at`, `finished_at`, `status`
-- `20260531130000_attendance_performance_indexes.sql` — indexes for calendar + attendance queries
+## Workflow for accurate stats
 
-## Verification
+1. **Open a section** → check-in recorded (browser + cloud when session exists)
+2. **Save sets** → timestamps + optional rest timer
+3. **Finish workout** → check-out for duration
+4. Open **Training habits** → pick 30d–1y or custom dates
+
+## Supabase
+
+Apply migrations:
+
+- `20260531120000_session_timing_attendance.sql`
+- `20260531130000_attendance_performance_indexes.sql`
+
+## Verify
 
 ```bash
 npm run verify:attendance
 npm run audit:analytics
 npm run audit:supabase
 ```
-
-## Weekly target
-
-Stored in `localStorage` (`gymbro_weekly_target_days`, default 4). Adjustable in the attendance modal.

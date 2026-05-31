@@ -37,5 +37,6 @@ export interface AttendanceReport {
   mostSkippedWeekday: string | null
   bestHourToTrain: { hour: number; label: string; sessionDays: number } | null
   longRestExercises: { exercise: string; medianRestSec: number; samples: number }[]
+  topSectionByTime: string | null
   insights: { icon: string; title: string; message: string; tone: 'positive' | 'neutral' | 'warning' }[]
 }

@@ -1,4 +1,5 @@
 import { calendarDayKey } from './dateUtils'
+import { getEarliestLocalCheckInForDay } from './checkIn'
 import { computeTrainingStreak } from './trainingCalendar'
 import { getRestEventsInRange } from './restEventLog'
 import type { AttendanceReport, AttendanceSession, DateRange } from '../types/attendance'
@@ -82,9 +83,28 @@ function groupSessionsByGymDay(
   return map
 }
 
-function sessionDurationMinutes(daySessions: AttendanceSession[]): number {
+function daySetTimes(daySessions: AttendanceSession[]): number[] {
+  const times: number[] = []
+  for (const s of daySessions) {
+    for (const set of s.sets) {
+      const t = new Date(set.loggedAt).getTime()
+      if (!Number.isNaN(t)) times.push(t)
+    }
+  }
+  return times.sort((a, b) => a - b)
+}
+
+function sessionDurationMinutes(dayKey: string, daySessions: AttendanceSession[]): number {
   let startMs: number | null = null
   let endMs: number | null = null
+  const setTimes = daySetTimes(daySessions)
+  const totalSets = daySessions.reduce((n, s) => n + s.sets.length, 0)
+
+  const localCheckIn = getEarliestLocalCheckInForDay(dayKey)
+  if (localCheckIn) {
+    const t = new Date(localCheckIn).getTime()
+    if (!Number.isNaN(t)) startMs = t
+  }
 
   for (const s of daySessions) {
     if (s.startedAt) {
@@ -95,35 +115,38 @@ function sessionDurationMinutes(daySessions: AttendanceSession[]): number {
       const t = new Date(s.finishedAt).getTime()
       if (!Number.isNaN(t)) endMs = endMs === null ? t : Math.max(endMs, t)
     }
-    for (const set of s.sets) {
-      const t = new Date(set.loggedAt).getTime()
-      if (!Number.isNaN(t)) {
-        startMs = startMs === null ? t : Math.min(startMs, t)
-        endMs = endMs === null ? t : Math.max(endMs, t)
-      }
-    }
-    if (startMs === null) {
-      startMs = s.timestamp
-      endMs = s.timestamp
-    }
+  }
+
+  if (setTimes.length > 0) {
+    startMs = startMs === null ? setTimes[0] : Math.min(startMs, setTimes[0])
+    endMs = endMs === null ? setTimes[setTimes.length - 1] : Math.max(endMs, setTimes[setTimes.length - 1])
   }
 
   if (startMs === null || endMs === null) return 0
-  const span = endMs - startMs
-  if (span < 60_000) return Math.max(1, Math.round(span / 60_000) || 1)
+
+  let span = endMs - startMs
+  // Same-second saves: estimate from set count (~2.5 min per set incl. rest)
+  if (span < 120_000 && totalSets >= 2) {
+    return Math.max(10, Math.round(totalSets * 2.5))
+  }
+  if (span < 60_000) return totalSets >= 1 ? 8 : 0
   return Math.round(span / 60_000)
 }
 
-function checkInToFirstSetMinutes(daySessions: AttendanceSession[]): number | null {
+function checkInToFirstSetMinutes(dayKey: string, daySessions: AttendanceSession[]): number | null {
   let checkIn: number | null = null
   let firstSet: number | null = null
+
+  const local = getEarliestLocalCheckInForDay(dayKey)
+  if (local) {
+    const t = new Date(local).getTime()
+    if (!Number.isNaN(t)) checkIn = t
+  }
 
   for (const s of daySessions) {
     if (s.startedAt) {
       const t = new Date(s.startedAt).getTime()
       if (!Number.isNaN(t)) checkIn = checkIn === null ? t : Math.min(checkIn, t)
-    } else {
-      checkIn = checkIn === null ? s.timestamp : Math.min(checkIn, s.timestamp)
     }
     for (const set of s.sets) {
       const t = new Date(set.loggedAt).getTime()
@@ -131,8 +154,10 @@ function checkInToFirstSetMinutes(daySessions: AttendanceSession[]): number | nu
     }
   }
 
-  if (checkIn === null || firstSet === null || firstSet <= checkIn) return null
-  return Math.round((firstSet - checkIn) / 60_000)
+  if (checkIn === null || firstSet === null) return null
+  const gapMs = firstSet - checkIn
+  if (gapMs < 30_000) return 0
+  return Math.round(gapMs / 60_000)
 }
 
 function inferRestFromSets(sessions: AttendanceSession[]): Map<string, number[]> {
@@ -233,10 +258,10 @@ export function buildAttendanceReport(
   const sectionMinutes = new Map<string, number>()
   const hourCounts = new Map<number, number>()
 
-  for (const [, daySessions] of byDay) {
-    const mins = sessionDurationMinutes(daySessions)
+  for (const [dayKey, daySessions] of byDay) {
+    const mins = sessionDurationMinutes(dayKey, daySessions)
     if (mins > 0) durations.push(mins)
-    const gap = checkInToFirstSetMinutes(daySessions)
+    const gap = checkInToFirstSetMinutes(dayKey, daySessions)
     if (gap !== null) checkInGaps.push(gap)
 
     for (const s of daySessions) {
@@ -263,9 +288,10 @@ export function buildAttendanceReport(
     weekdayCounts.set(wd, (weekdayCounts.get(wd) ?? 0) + 1)
   }
 
-  const weekdayVisits = [...weekdayCounts.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([wd, count]) => ({ weekday: WEEKDAY_LABELS[wd], count }))
+  const weekdayVisits = WEEKDAY_LABELS.map((weekday, wd) => ({
+    weekday,
+    count: weekdayCounts.get(wd) ?? 0,
+  }))
 
   let mostSkippedWeekday: string | null = null
   if (weekdayVisits.length > 0) {
@@ -378,8 +404,19 @@ export function buildAttendanceReport(
     insights.push({
       icon: '🚪',
       title: 'Warm-up gap',
-      message: `Avg ${avgGap} min from check-in to first set logged — shorten if you're waiting too long.`,
+      message:
+        avgGap === 0
+          ? 'You start logging sets right after check-in — great flow.'
+          : `Avg ${avgGap} min from check-in to first set — shorten if you're waiting too long.`,
       tone: avgGap > 15 ? 'warning' : 'neutral',
+    })
+  } else if (gymDays.length > 0) {
+    insights.push({
+      icon: '🚪',
+      title: 'Warm-up gap',
+      message:
+        'Open a section before your first save (or apply timing migration) to measure check-in → first set.',
+      tone: 'neutral',
     })
   }
 
@@ -411,6 +448,17 @@ export function buildAttendanceReport(
     })
   }
 
+  const topSectionByTime = sectionTimeMinutes[0]?.section ?? null
+
+  if (topSectionByTime && sectionTimeMinutes[0].totalMinutes > 0) {
+    insights.push({
+      icon: '🏋️',
+      title: 'Most time per visit',
+      message: `${topSectionByTime} — ~${sectionVisitCounts.find((s) => s.section === topSectionByTime)?.avgMinutes ?? sectionTimeMinutes[0].totalMinutes} min average.`,
+      tone: 'neutral',
+    })
+  }
+
   return {
     range: normalizedRange,
     gymVisits: gymDays.length,
@@ -435,6 +483,7 @@ export function buildAttendanceReport(
     mostSkippedWeekday,
     bestHourToTrain: bestHour,
     longRestExercises,
+    topSectionByTime,
     insights,
   }
 }

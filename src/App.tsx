@@ -678,7 +678,14 @@ export default function App() {
                     onClick={() => setAnalyticsOpen(true)}
                     className="btn-primary mt-4 w-full disabled:opacity-60"
                   >
-                    {workout.sessionsLoading ? 'Loading stats…' : 'Open analytics'}
+                    {workout.sessionsLoading ? 'Loading stats…' : 'Section progress'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceOpen(true)}
+                    className="btn-secondary mt-2 w-full border-cyan-700/50 text-cyan-100"
+                  >
+                    Training habits & attendance
                   </button>
                   <button
                     type="button"
