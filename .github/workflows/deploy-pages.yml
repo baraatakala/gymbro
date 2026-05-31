@@ -1,5 +1,8 @@
 # Build Vite app and deploy to GitHub Pages (project site: /gymbro/)
 # https://baraatakala.github.io/gymbro/
+#
+# Pages must NOT use "main / (root)" — that serves dev index.html (/src/main.tsx).
+# Use either: GitHub Actions, OR "main /docs", OR "gh-pages / (root)".
 
 name: Deploy to GitHub Pages
 
@@ -42,12 +45,30 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+      - name: Sync build to docs/ (for Pages: main → /docs)
+        run: |
+          rm -rf docs
+          mkdir -p docs
+          cp -r dist/* docs/
+          touch docs/.nojekyll
+
+      - name: Commit docs folder
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --staged --quiet; then
+            echo "docs unchanged"
+          else
+            git commit -m "chore(pages): sync built app to docs/ [skip ci]"
+            git push
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # Optional fallback branch (needs contents: write). Never blocks the main deploy.
       - name: Publish gh-pages branch
         continue-on-error: true
         uses: peaceiris/actions-gh-pages@v4
