@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { isSupabaseConfigured } from '../lib/supabase'
+import { isSupabaseConfigured, supabaseConfigHint } from '../lib/supabase'
 import { ensureSupabaseUser, isAuthSetupError } from '../lib/supabaseAuth'
 import {
   hasLocalWorkoutData,
@@ -17,7 +17,7 @@ export function useSupabase() {
   const checkConnection = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setStatus('disabled')
-      setMessage('Add Supabase env variables')
+      setMessage(supabaseConfigHint())
       return
     }
 
@@ -38,7 +38,7 @@ export function useSupabase() {
 
   const syncToCloud = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      return { ok: false, message: 'Supabase not configured' }
+      return { ok: false, message: supabaseConfigHint() || 'Supabase not configured' }
     }
 
     setSyncing(true)
