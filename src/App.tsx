@@ -40,6 +40,7 @@ import {
   recordLocalCheckIn,
 } from './lib/checkIn'
 import { touchSessionCheckIn } from './lib/supabaseAttendance'
+import { computeVisitDurationMinutes } from './lib/attendanceAnalytics'
 import { calendarDayKey } from './lib/dateUtils'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
@@ -356,6 +357,15 @@ export default function App() {
     hasPlan,
   )
 
+  const todayActiveVisitMinutes = useMemo(() => {
+    const dayKey = calendarDayKey(Date.now())
+    const daySessions = attendance.sessions.filter(
+      (s) => calendarDayKey(s.timestamp) === dayKey,
+    )
+    if (daySessions.length === 0) return null
+    return computeVisitDurationMinutes(dayKey, daySessions)
+  }, [attendance.sessions])
+
   useEffect(() => {
     if (!hasPlan || workout.sessionsLoading) return
     void attendance.reload()
@@ -618,6 +628,7 @@ export default function App() {
             totalExercises={planExercises.length}
             onFinish={handleFinishWorkout}
             onShowWorkflow={() => setWorkflowHelpOpen(true)}
+            activeVisitMinutes={todayActiveVisitMinutes}
           />
 
           <p className="mb-3 text-center text-xs text-slate-500 lg:hidden">
@@ -790,6 +801,11 @@ export default function App() {
                     <MiniStat
                       label={cardioMode ? 'Avg min/set' : 'Avg kg/set'}
                       value={todayStats.setCount > 0 ? String(todayStats.avgWeight) : '—'}
+                      sub={
+                        cardioMode || todayStats.setCount === 0
+                          ? ''
+                          : 'mean weight per set'
+                      }
                     />
                     <MiniStat
                       label={cardioMode ? 'Minutes' : 'Volume'}
@@ -798,7 +814,7 @@ export default function App() {
                           ? todayStats.totalVolume.toLocaleString()
                           : '—'
                       }
-                      sub={cardioMode || todayStats.setCount === 0 ? '' : 'kg'}
+                      sub={cardioMode || todayStats.setCount === 0 ? '' : 'Σ weight × reps'}
                     />
                     <MiniStat
                       label="Exercises"

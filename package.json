@@ -13,7 +13,8 @@
     "verify:attendance": "node scripts/verify-attendance.mjs",
     "verify:insights": "node scripts/verify-insights.mjs",
     "verify:deploy": "node scripts/verify-deploy.mjs",
-    "verify": "npm run verify:attendance && npm run verify:insights && npm run audit:analytics && npm run audit:supabase && npm run verify:deploy",
+    "verify": "npm run verify:attendance && npm run verify:insights && npm run verify:visit-duration && npm run audit:analytics && npm run audit:supabase && npm run verify:deploy",
+    "verify:visit-duration": "node scripts/verify-visit-duration.mjs",
     "publish:pages": "node scripts/publish-pages.mjs"
   },
   "dependencies": {

@@ -104,7 +104,7 @@ export function buildSectionRows(report: AttendanceReport): InsightsRow[] {
     value: s.visits,
     value2: s.avgMinutes,
     unit: 'visits',
-    meta: `~${s.avgMinutes} min avg`,
+    meta: `~${s.avgMinutes} min active / visit`,
   }))
 }
 

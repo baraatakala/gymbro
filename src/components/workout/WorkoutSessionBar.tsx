@@ -1,4 +1,5 @@
-import { formatSessionTime } from '../../lib/checkIn'
+import { formatSessionTime, sessionElapsedMinutes } from '../../lib/checkIn'
+import { formatVisitDuration } from '../../lib/attendanceAnalytics'
 import { getSectionMeta } from '../../lib/sectionUtils'
 
 interface WorkoutSessionBarProps {
@@ -13,6 +14,8 @@ interface WorkoutSessionBarProps {
   totalExercises: number
   onFinish: () => void
   onShowWorkflow: () => void
+  /** Insights-style active visit (set-based), when session ended */
+  activeVisitMinutes?: number | null
 }
 
 export function WorkoutSessionBar({
@@ -27,12 +30,20 @@ export function WorkoutSessionBar({
   totalExercises,
   onFinish,
   onShowWorkflow,
+  activeVisitMinutes,
 }: WorkoutSessionBarProps) {
   if (totalExercises === 0) return null
 
   const meta = getSectionMeta(sectionName)
   const canFinish = savedCount > 0 && !sessionComplete
   const pct = Math.round((savedCount / totalExercises) * 100)
+  const clockVisitMin = sessionElapsedMinutes(checkInAt, checkOutAt)
+  const visitLabel =
+    sessionComplete && activeVisitMinutes != null && activeVisitMinutes > 0
+      ? formatVisitDuration(activeVisitMinutes)
+      : sessionComplete && clockVisitMin != null
+        ? formatVisitDuration(clockVisitMin)
+        : null
 
   const circumference = 2 * Math.PI * 20
   const offset = circumference - (pct / 100) * circumference
@@ -84,9 +95,15 @@ export function WorkoutSessionBar({
             <p className="text-[10px] text-slate-500">End session when you leave</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-slate-500">Timer</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">
+              {sessionComplete ? 'Active time' : 'Timer'}
+            </p>
             <p className="font-mono font-medium text-white">
-              {isResting ? (
+              {sessionComplete && visitLabel ? (
+                <span className="text-emerald-300" title="Based on sets logged, not clock while app was open">
+                  {visitLabel}
+                </span>
+              ) : isResting ? (
                 <span className="text-amber-400">Rest {restTime}</span>
               ) : (
                 workoutTime

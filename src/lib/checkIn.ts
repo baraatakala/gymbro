@@ -47,6 +47,19 @@ export function getLocalCheckOut(
   }
 }
 
+export function sessionElapsedMinutes(
+  checkInAt?: string,
+  checkOutAt?: string,
+  maxMinutes = 180,
+): number | null {
+  if (!checkInAt || !checkOutAt) return null
+  const start = new Date(checkInAt).getTime()
+  const end = new Date(checkOutAt).getTime()
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null
+  const mins = Math.round((end - start) / 60_000)
+  return Math.min(mins, maxMinutes)
+}
+
 export function formatSessionTime(iso: string | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)

@@ -107,43 +107,80 @@ function daySetTimes(daySessions: AttendanceSession[]): number[] {
   return times.sort((a, b) => a - b)
 }
 
+/** Max believable gym visit; longer spans use set-based active time instead of raw check-out. */
+const MAX_VISIT_MINUTES = 180
+const MIN_PER_SET_ESTIMATE = 2.5
+/** Check-out more than this after last set is treated as leaving the app open, not lifting. */
+const CHECKOUT_SET_GRACE_MS = 20 * 60_000
+
+function estimateMinutesFromSets(totalSets: number, setSpanMs: number): number {
+  if (totalSets <= 0) return 0
+  if (totalSets === 1) return 8
+  if (setSpanMs >= 60_000) {
+    return Math.max(10, Math.round(setSpanMs / 60_000 + totalSets * 0.5))
+  }
+  return Math.max(10, Math.round(totalSets * MIN_PER_SET_ESTIMATE))
+}
+
 function sessionDurationMinutes(dayKey: string, daySessions: AttendanceSession[]): number {
-  let startMs: number | null = null
-  let endMs: number | null = null
   const setTimes = daySetTimes(daySessions)
   const totalSets = daySessions.reduce((n, s) => n + s.sets.length, 0)
+  const setSpanMs =
+    setTimes.length >= 2 ? setTimes[setTimes.length - 1] - setTimes[0] : 0
+  const setBasedMin = estimateMinutesFromSets(totalSets, setSpanMs)
+
+  if (setTimes.length === 0) return 0
+
+  let startMs: number | null = setTimes[0]
+  let endMs: number | null = setTimes[setTimes.length - 1]
 
   const localCheckIn = getEarliestLocalCheckInForDay(dayKey)
   if (localCheckIn) {
     const t = new Date(localCheckIn).getTime()
-    if (!Number.isNaN(t)) startMs = t
+    if (!Number.isNaN(t)) startMs = Math.min(startMs, t)
   }
 
   for (const s of daySessions) {
     if (s.startedAt) {
       const t = new Date(s.startedAt).getTime()
-      if (!Number.isNaN(t)) startMs = startMs === null ? t : Math.min(startMs, t)
+      if (!Number.isNaN(t)) startMs = Math.min(startMs, t)
     }
     if (s.finishedAt) {
       const t = new Date(s.finishedAt).getTime()
-      if (!Number.isNaN(t)) endMs = endMs === null ? t : Math.max(endMs, t)
+      if (!Number.isNaN(t)) endMs = Math.max(endMs, t)
     }
   }
 
-  if (setTimes.length > 0) {
-    startMs = startMs === null ? setTimes[0] : Math.min(startMs, setTimes[0])
-    endMs = endMs === null ? setTimes[setTimes.length - 1] : Math.max(endMs, setTimes[setTimes.length - 1])
+  const lastSetMs = setTimes[setTimes.length - 1]
+  if (endMs > lastSetMs + CHECKOUT_SET_GRACE_MS) {
+    endMs = lastSetMs + 5 * 60_000
   }
 
-  if (startMs === null || endMs === null) return 0
+  const clockMin = Math.round((endMs - startMs) / 60_000)
 
-  let span = endMs - startMs
-  // Same-second saves: estimate from set count (~2.5 min per set incl. rest)
-  if (span < 120_000 && totalSets >= 2) {
-    return Math.max(10, Math.round(totalSets * 2.5))
+  if (clockMin > MAX_VISIT_MINUTES) {
+    return Math.min(MAX_VISIT_MINUTES, Math.max(setBasedMin, 10))
   }
-  if (span < 60_000) return totalSets >= 1 ? 8 : 0
-  return Math.round(span / 60_000)
+  if (clockMin < 2 && totalSets >= 2) {
+    return setBasedMin
+  }
+  return Math.max(clockMin, setBasedMin > 0 ? Math.min(setBasedMin, clockMin + 15) : clockMin)
+}
+
+/** Exported for tests — active visit length for one gym day. */
+export function computeVisitDurationMinutes(
+  dayKey: string,
+  daySessions: AttendanceSession[],
+): number {
+  return sessionDurationMinutes(dayKey, daySessions)
+}
+
+export function formatVisitDuration(minutes: number): string {
+  if (minutes <= 0) return '—'
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
 function checkInToFirstSetMinutes(dayKey: string, daySessions: AttendanceSession[]): number | null {

@@ -13,7 +13,7 @@ import {
 import { generateInsights } from '../../lib/progressInsights'
 import { collapseSessionsByDay, sessionsHaveLoggedData, sessionsTodayOnly } from '../../lib/sessionMerge'
 import { isCardioSection } from '../../lib/sectionUtils'
-import { DEFAULT_REPS_PER_SET, type PersonalRecord, type WorkoutSession } from '../../types/workout'
+import { type PersonalRecord, type WorkoutSession } from '../../types/workout'
 import { ExportBar, type ExportFormat } from './ExportBar'
 import { TrainingCalendar } from './TrainingCalendar'
 
@@ -297,6 +297,7 @@ export function ProgressModal({
                         <StatCard
                           label={cardio ? 'Avg duration' : 'Avg weight'}
                           value={cardio ? `${todayStats.avgWeight} min` : `${todayStats.avgWeight} kg`}
+                          hint={cardio ? undefined : 'mean per set'}
                         />
                         <StatCard
                           label={cardio ? 'Minutes' : 'Volume'}
@@ -305,6 +306,7 @@ export function ProgressModal({
                               ? `${todayStats.totalVolume.toLocaleString()} min`
                               : `${todayStats.totalVolume.toLocaleString()} kg`
                           }
+                          hint={cardio ? undefined : 'Σ weight × reps'}
                         />
                       </div>
                     </>
@@ -317,6 +319,7 @@ export function ProgressModal({
                     <StatCard
                       label={cardio ? 'Avg duration' : 'Avg weight'}
                       value={cardio ? `${stats.avgWeight} min` : `${stats.avgWeight} kg`}
+                      hint={cardio ? undefined : 'mean per set'}
                     />
                     <StatCard
                       label={cardio ? 'Total minutes' : 'Total volume'}
@@ -325,7 +328,7 @@ export function ProgressModal({
                           ? `${stats.totalVolume.toLocaleString()} min`
                           : `${stats.totalVolume.toLocaleString()} kg`
                       }
-                      hint={cardio ? undefined : `${DEFAULT_REPS_PER_SET} reps/set`}
+                      hint={cardio ? undefined : 'Σ weight × reps'}
                     />
                     <StatCard
                       label="Improvement"

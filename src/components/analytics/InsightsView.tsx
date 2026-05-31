@@ -296,6 +296,13 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
             <p className="text-xs text-slate-600">
               {report.range.from} → {report.range.to} · {report.gymVisits} gym day
               {report.gymVisits !== 1 ? 's' : ''}
+              {report.avgSessionMinutes != null && (
+                <span className="text-slate-500">
+                  {' '}
+                  · Avg visit = active lifting window (first set → last set), not clock
+                  check-out if you left the app open
+                </span>
+              )}
             </p>
 
             <div className="glass-panel overflow-hidden">
