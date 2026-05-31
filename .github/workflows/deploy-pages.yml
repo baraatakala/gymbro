@@ -12,7 +12,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -47,8 +47,9 @@ jobs:
         with:
           path: dist
 
-      # Fallback: publish built dist to gh-pages branch (use if Pages source is not GitHub Actions)
+      # Optional fallback branch (needs contents: write). Never blocks the main deploy.
       - name: Publish gh-pages branch
+        continue-on-error: true
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
