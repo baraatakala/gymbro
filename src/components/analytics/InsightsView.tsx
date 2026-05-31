@@ -26,10 +26,9 @@ type ChartMode = 'off' | 'sections' | 'weekdays'
 interface InsightsViewProps {
   attendance: ReturnType<typeof useAttendanceData>
   planSections: string[]
-  onBack: () => void
 }
 
-export function InsightsView({ attendance, planSections, onBack }: InsightsViewProps) {
+export function InsightsView({ attendance, planSections }: InsightsViewProps) {
   const {
     loading,
     error,
@@ -50,14 +49,18 @@ export function InsightsView({ attendance, planSections, onBack }: InsightsViewP
   const [sortKey, setSortKey] = useState<InsightsSortKey>('value')
   const [sortDir, setSortDir] = useState<InsightsSortDir>('desc')
   const [visibleMetrics, setVisibleMetricsState] = useState<InsightMetricId[]>(getVisibleMetrics)
+  const [sectionOnly, setSectionOnly] = useState('')
 
   const todayIso = toIsoDate(new Date())
 
   const rows = useMemo((): InsightsRow[] => {
     if (!report) return []
     switch (table) {
-      case 'sections':
-        return buildSectionRows(report)
+      case 'sections': {
+        let list = buildSectionRows(report)
+        if (sectionOnly) list = list.filter((r) => r.label === sectionOnly)
+        return list
+      }
       case 'weekdays':
         return buildWeekdayRows(report)
       case 'rest':
@@ -67,7 +70,7 @@ export function InsightsView({ attendance, planSections, onBack }: InsightsViewP
       default:
         return []
     }
-  }, [report, table, trainedDates, sessions])
+  }, [report, table, trainedDates, sessions, sectionOnly])
 
   const displayRows = useMemo(
     () => sortRows(filterRows(rows, search), sortKey, sortDir),
@@ -112,20 +115,16 @@ export function InsightsView({ attendance, planSections, onBack }: InsightsViewP
   }
 
   return (
-    <div className="pb-24">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">Insights</p>
-          <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
-            Explore your training data
-          </h2>
-          <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Pick a table, filter and sort rows, toggle KPIs, export CSV — no fixed Q&amp;A cards.
-          </p>
-        </div>
-        <button type="button" onClick={onBack} className="btn-secondary shrink-0">
-          ← Workout
-        </button>
+    <div className="pb-8">
+      <div className="mb-6">
+        <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">Insights</p>
+        <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
+          Explore your training data
+        </h2>
+        <p className="mt-1 max-w-xl text-sm text-slate-400">
+          Tables, filters, sort, KPI toggles, CSV export. Use the left rail (desktop) or bottom bar
+          to switch back to Workout.
+        </p>
       </div>
 
       <div className="glass-panel mb-4 flex flex-wrap items-end gap-3 p-4">
@@ -299,6 +298,21 @@ export function InsightsView({ attendance, planSections, onBack }: InsightsViewP
                     {label}
                   </button>
                 ))}
+                {table === 'sections' && planSections.length > 0 && (
+                  <select
+                    value={sectionOnly}
+                    onChange={(e) => setSectionOnly(e.target.value)}
+                    className="input-field py-1.5 text-xs"
+                    aria-label="Filter by plan section"
+                  >
+                    <option value="">All sections</option>
+                    {planSections.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <input
                   type="search"
                   value={search}

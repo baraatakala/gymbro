@@ -49,6 +49,25 @@
     @apply mx-auto w-full max-w-6xl px-4 pb-40 pt-6 sm:px-6 sm:pb-32 sm:pt-8 lg:pb-28;
   }
 
+  .app-main--docked {
+    @apply lg:pl-[4.75rem];
+  }
+
+  .app-dock-desktop {
+    @apply fixed left-0 top-0 z-40 hidden h-full w-[4.75rem] flex-col border-r border-slate-800/80 bg-slate-950/95 px-2 py-6 shadow-xl backdrop-blur-xl lg:flex;
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .app-dock-mobile {
+    @apply fixed bottom-0 left-0 right-0 z-[34] flex border-t border-slate-800/90 bg-slate-950/98 px-1 pt-1 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-xl lg:hidden;
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+  }
+
+  .app-main--docked .page-shell {
+    @apply pb-36 lg:pb-28;
+  }
+
   .glass-panel {
     @apply rounded-2xl border border-slate-800/70 bg-slate-900/50 shadow-xl shadow-black/25 backdrop-blur-md;
   }
@@ -90,20 +109,18 @@
   }
 
   .workout-dock {
-    @apply fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800/90 bg-slate-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl;
+    @apply fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800/90 bg-slate-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:left-[4.75rem];
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
-  .fab-settings {
-    @apply fixed z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-lg text-white shadow-xl shadow-emerald-950/50 transition hover:scale-105 active:scale-95;
-    right: max(1rem, env(safe-area-inset-right));
-    bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  .app-main--docked .workout-dock {
+    @apply bottom-14 lg:bottom-0;
   }
 
-  @media (min-width: 1024px) {
-    .fab-settings {
-      bottom: max(1.5rem, env(safe-area-inset-bottom));
-    }
+  .fab-settings {
+    @apply fixed z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-lg text-white shadow-xl shadow-emerald-950/50 transition hover:scale-105 active:scale-95 lg:hidden;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(8.5rem, calc(7.5rem + env(safe-area-inset-bottom)));
   }
 
   .quote-scroll-fade {

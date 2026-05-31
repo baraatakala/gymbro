@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { InsightsView } from './components/analytics/InsightsView'
 import { ProgressModal } from './components/analytics/ProgressModal'
-import { AppViewNav, type AppView } from './components/layout/AppViewNav'
+import { AppDock } from './components/layout/AppDock'
+import type { AppView } from './components/layout/AppViewNav'
 import { Header } from './components/layout/Header'
 import { StatusStrip } from './components/layout/StatusStrip'
 import { Sidebar } from './components/layout/Sidebar'
@@ -319,40 +320,42 @@ export default function App() {
   ])
 
   return (
-    <div className="page-shell">
-      <Header quoteIndex={quoteIndex} />
-
-      <StatusStrip
-        dataLabel={dataSourceLabel}
-        libraryExercises={workout.libraryStats.exercises}
-        libraryMuscles={workout.libraryStats.muscles}
-        sectionCount={workout.plan.days.length}
-        activeSection={hasPlan ? sectionName : undefined}
-        activeExerciseCount={planExercises.length}
-        emptySections={workout.emptySectionCount}
-        prCount={workout.records.length}
-        trainingDays={workout.trainingDays}
-        trainingStreak={trainingStreak}
-        savedTodayCount={savedCount}
-        totalPlanExercises={planExercises.length}
-        onOpenInsights={() => setAppView('insights')}
-      />
-
+    <>
       {hasPlan && (
-        <AppViewNav
+        <AppDock
           view={appView}
           onChange={setAppView}
+          onOpenProgress={() => setAnalyticsOpen(true)}
+          onOpenSettings={() => setSidebarOpen(true)}
           disabled={workout.isInitialLoading}
         />
       )}
 
-      {hasPlan && appView === 'insights' && (
-        <InsightsView
-          attendance={attendance}
-          planSections={planSectionNames}
-          onBack={() => setAppView('workout')}
-        />
-      )}
+      <div className={hasPlan ? 'app-main--docked' : ''}>
+        <div className="page-shell">
+          <Header quoteIndex={quoteIndex} />
+
+          <StatusStrip
+            dataLabel={dataSourceLabel}
+            libraryExercises={workout.libraryStats.exercises}
+            libraryMuscles={workout.libraryStats.muscles}
+            sectionCount={workout.plan.days.length}
+            activeSection={hasPlan && appView === 'workout' ? sectionName : undefined}
+            activeExerciseCount={planExercises.length}
+            emptySections={workout.emptySectionCount}
+            prCount={workout.records.length}
+            trainingDays={workout.trainingDays}
+            trainingStreak={trainingStreak}
+            savedTodayCount={savedCount}
+            totalPlanExercises={planExercises.length}
+          />
+
+          {hasPlan && appView === 'insights' && (
+            <InsightsView
+              attendance={attendance}
+              planSections={planSectionNames}
+            />
+          )}
 
       {appView === 'workout' && hasPlan &&
         planExercises.length > 0 &&
@@ -765,6 +768,8 @@ export default function App() {
         />
       )}
 
+        </div>
+
       <Sidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((v) => !v)}
@@ -822,10 +827,6 @@ export default function App() {
           setSidebarOpen(false)
         }}
         appView={appView}
-        onNavigate={(view) => {
-          setAppView(view)
-          setSidebarOpen(false)
-        }}
         onExport={(format) => {
           void handleExport(format)
         }}
@@ -875,7 +876,8 @@ export default function App() {
       <FeatureExplorer open={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
 
       {toast && <Toast message={toast.message} tone={toast.tone} />}
-    </div>
+      </div>
+    </>
   )
 }
 

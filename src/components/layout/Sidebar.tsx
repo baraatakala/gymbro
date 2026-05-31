@@ -16,7 +16,6 @@ interface SidebarProps {
   onReset: () => void
   onAnalytics: () => void
   appView?: AppView
-  onNavigate?: (view: AppView) => void
   onExport: (format: 'json' | 'csv-sets' | 'csv-records') => void
   onAddExercise: () => void
   onBrowseLibrary: () => void
@@ -42,7 +41,6 @@ export function Sidebar({
   onReset,
   onAnalytics,
   appView = 'workout',
-  onNavigate,
   onExport,
   onAddExercise,
   onBrowseLibrary,
@@ -82,28 +80,15 @@ export function Sidebar({
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-5">
-          {onNavigate && (
-            <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Navigate
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <SidebarBtn
-                  onClick={() => onNavigate('workout')}
-                  variant={appView === 'workout' ? 'primary' : 'default'}
-                >
-                  Workout
-                </SidebarBtn>
-                <SidebarBtn
-                  onClick={() => onNavigate('insights')}
-                  variant={appView === 'insights' ? 'primary' : 'default'}
-                >
-                  Insights
-                </SidebarBtn>
-              </div>
-            </section>
+          {appView === 'insights' && (
+            <p className="rounded-xl border border-cyan-800/40 bg-cyan-950/30 px-3 py-2 text-xs leading-relaxed text-cyan-100/90">
+              Calendar, filters, and CSV export live in the <strong>Insights</strong> screen (left
+              rail or bottom bar).
+            </p>
           )}
 
+          {appView === 'workout' && (
+          <>
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
               Timer
@@ -166,6 +151,8 @@ export function Sidebar({
               </p>
             )}
           </section>
+          </>
+          )}
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
