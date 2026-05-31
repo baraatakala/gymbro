@@ -319,6 +319,10 @@ export default function App() {
     attendance.reload,
   ])
 
+  useEffect(() => {
+    if (hasPlan && appView === 'insights') void attendance.reload()
+  }, [appView, hasPlan, attendance.reload])
+
   return (
     <>
       {hasPlan && (

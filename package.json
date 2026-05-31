@@ -11,7 +11,9 @@
     "audit:supabase": "node scripts/audit-supabase.mjs",
     "audit:analytics": "node scripts/audit-analytics.mjs",
     "verify:attendance": "node scripts/verify-attendance.mjs",
+    "verify:insights": "node scripts/verify-insights.mjs",
     "verify:deploy": "node scripts/verify-deploy.mjs",
+    "verify": "npm run verify:attendance && npm run verify:insights && npm run audit:analytics && npm run audit:supabase && npm run verify:deploy",
     "publish:pages": "node scripts/publish-pages.mjs"
   },
   "dependencies": {

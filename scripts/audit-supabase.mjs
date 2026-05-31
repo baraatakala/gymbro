@@ -5,11 +5,16 @@
  * Note: counts are per signed-in user (RLS). For full DB totals use
  * Supabase MCP server "user-supabase" (see .cursor/mcp.json) or audit-all-tables.sql.
  */
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
 
 function loadEnv() {
-  let raw = readFileSync('.env', 'utf8')
+  const path = existsSync('.env') ? '.env' : existsSync('.env.production') ? '.env.production' : null
+  if (!path) {
+    console.error('Missing .env or .env.production')
+    process.exit(1)
+  }
+  let raw = readFileSync(path, 'utf8')
   if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1)
   const env = {}
   for (const line of raw.split(/\r?\n/)) {
@@ -56,12 +61,14 @@ const tables = [
   'custom_exercises',
 ]
 
+let tableErrors = 0
 for (const table of tables) {
   const { count, error: countErr } = await supabase
     .from(table)
     .select('*', { count: 'exact', head: true })
   if (countErr) {
     console.log(`\n${table}: ERROR — ${countErr.message}`)
+    tableErrors++
     continue
   }
   console.log(`\n${table}: ${count ?? 0} rows`)
@@ -115,10 +122,51 @@ const { data: trainingDays } = await supabase
 console.log('\n--- training_days (latest) ---')
 console.log(JSON.stringify(trainingDays, null, 2))
 
+const { error: timingErr } = await supabase
+  .from('workout_sessions')
+  .select('id, started_at, finished_at, status')
+  .limit(1)
+
+if (timingErr) {
+  console.log('\n--- Attendance timing columns ---')
+  if (/started_at|finished_at|status/.test(timingErr.message)) {
+    console.warn(
+      'WARN: Apply supabase/migrations/20260531120000_session_timing_attendance.sql in Supabase SQL editor',
+    )
+  } else {
+    console.warn('WARN:', timingErr.message)
+  }
+} else {
+  console.log('\nOK: workout_sessions has started_at / finished_at / status')
+}
+
+const { error: loggedAtErr } = await supabase
+  .from('workout_sets')
+  .select('logged_at')
+  .limit(1)
+
+if (loggedAtErr && /logged_at/.test(loggedAtErr.message)) {
+  console.warn('WARN: workout_sets.logged_at missing — attendance rest gaps may be estimated only')
+} else if (!loggedAtErr) {
+  console.log('OK: workout_sets has logged_at')
+}
+
+const chestSelect = timingErr
+  ? 'id, day, timestamp, save_date, total_volume_kg'
+  : 'id, day, timestamp, save_date, status, total_volume_kg'
 const { data: chestSessions } = await supabase
   .from('workout_sessions')
-  .select('id, day, timestamp, save_date, status, total_volume_kg')
+  .select(chestSelect)
   .eq('day', 'Chest')
   .order('timestamp', { ascending: false })
 console.log('\n--- Chest sessions ---')
 console.log(JSON.stringify(chestSessions, null, 2))
+
+const migrationMissing =
+  timingErr && /started_at|finished_at|status/.test(timingErr.message)
+if (migrationMissing) {
+  console.error('\nFAIL: attendance timing migration not applied on this project')
+}
+const exitCode = tableErrors > 0 || migrationMissing ? 1 : 0
+console.log(exitCode === 0 ? '\nSupabase audit passed.' : '\nSupabase audit reported issues.')
+process.exit(exitCode)
