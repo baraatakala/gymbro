@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AttendanceDashboard } from './components/analytics/AttendanceDashboard'
-import { AttendanceModal } from './components/analytics/AttendanceModal'
+import { InsightsView } from './components/analytics/InsightsView'
 import { ProgressModal } from './components/analytics/ProgressModal'
+import { AppViewNav, type AppView } from './components/layout/AppViewNav'
 import { Header } from './components/layout/Header'
 import { StatusStrip } from './components/layout/StatusStrip'
 import { Sidebar } from './components/layout/Sidebar'
@@ -45,7 +45,7 @@ export default function App() {
   const [activeDayId, setActiveDayId] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
-  const [attendanceOpen, setAttendanceOpen] = useState(false)
+  const [appView, setAppView] = useState<AppView>('workout')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [roadmapOpen, setRoadmapOpen] = useState(false)
   const [quoteIndex, setQuoteIndex] = useState(0)
@@ -335,18 +335,26 @@ export default function App() {
         trainingStreak={trainingStreak}
         savedTodayCount={savedCount}
         totalPlanExercises={planExercises.length}
-        onOpenHabits={() => setAttendanceOpen(true)}
+        onOpenInsights={() => setAppView('insights')}
       />
 
       {hasPlan && (
-        <AttendanceDashboard
-          attendance={attendance}
-          planSectionCount={workout.plan.days.length}
-          onOpenFull={() => setAttendanceOpen(true)}
+        <AppViewNav
+          view={appView}
+          onChange={setAppView}
+          disabled={workout.isInitialLoading}
         />
       )}
 
-      {hasPlan &&
+      {hasPlan && appView === 'insights' && (
+        <InsightsView
+          attendance={attendance}
+          planSections={planSectionNames}
+          onBack={() => setAppView('workout')}
+        />
+      )}
+
+      {appView === 'workout' && hasPlan &&
         planExercises.length > 0 &&
         !sessionsLookCorrupt(workout.sessions) &&
         allTimeStats.totalSessions === 0 &&
@@ -403,7 +411,7 @@ export default function App() {
         />
       )}
 
-      {hasPlan && activeDay && (
+      {appView === 'workout' && hasPlan && activeDay && (
         <DayManager
           days={workout.plan.days}
           activeDayId={activeDayId || activeDay.id}
@@ -459,7 +467,7 @@ export default function App() {
         />
       )}
 
-      {hasPlan && (
+      {appView === 'workout' && hasPlan && (
         <>
           {planExercises.length === 0 ? (
             <SectionStatsBar
@@ -714,13 +722,6 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAttendanceOpen(true)}
-                    className="btn-secondary mt-2 w-full border-cyan-700/50 text-cyan-100"
-                  >
-                    Training habits & attendance
-                  </button>
-                  <button
-                    type="button"
                     onClick={handleFinishWorkout}
                     className="btn-secondary mt-2 w-full"
                   >
@@ -750,7 +751,7 @@ export default function App() {
         </>
       )}
 
-      {hasPlan && planExercises.length > 0 && (
+      {appView === 'workout' && hasPlan && planExercises.length > 0 && (
         <WorkoutDock
           sectionName={sectionName}
           savedCount={savedCount}
@@ -820,8 +821,9 @@ export default function App() {
           setAnalyticsOpen(true)
           setSidebarOpen(false)
         }}
-        onAttendance={() => {
-          setAttendanceOpen(true)
+        appView={appView}
+        onNavigate={(view) => {
+          setAppView(view)
           setSidebarOpen(false)
         }}
         onExport={(format) => {
@@ -834,14 +836,6 @@ export default function App() {
           setSidebarOpen(false)
         }}
         trainingCalendarDates={workout.trainingCalendarDates}
-      />
-
-      <AttendanceModal
-        open={attendanceOpen}
-        onClose={() => setAttendanceOpen(false)}
-        planSections={planSectionNames}
-        trainingCalendarDates={workout.trainingCalendarDates}
-        attendance={attendance}
       />
 
       <ProgressModal
@@ -857,9 +851,9 @@ export default function App() {
         onExport={handleExport}
         exporting={exporting}
         trainingCalendarDates={workout.trainingCalendarDates}
-        onOpenHabits={() => {
+        onOpenInsights={() => {
           setAnalyticsOpen(false)
-          setAttendanceOpen(true)
+          setAppView('insights')
         }}
       />
 

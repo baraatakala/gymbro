@@ -83,5 +83,7 @@ export function useAttendanceData(
     reload,
     applyPreset,
     sessionCount: sessions.length,
+    sessions,
+    trainedDates,
   }
 }

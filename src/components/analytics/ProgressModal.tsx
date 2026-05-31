@@ -34,7 +34,7 @@ interface ProgressModalProps {
   onExport?: (format: ExportFormat) => void
   exporting?: boolean
   trainingCalendarDates?: string[]
-  onOpenHabits?: () => void
+  onOpenInsights?: () => void
 }
 
 export function ProgressModal({
@@ -50,7 +50,7 @@ export function ProgressModal({
   onExport,
   exporting = false,
   trainingCalendarDates = [],
-  onOpenHabits,
+  onOpenInsights,
 }: ProgressModalProps) {
   const [tab, setTab] = useState<Tab>('overview')
   const [refreshing, setRefreshing] = useState(false)
@@ -201,15 +201,15 @@ export function ProgressModal({
 
   return (
     <Modal open={open} onClose={onClose} title={`${day} — Progress`} wide>
-      {onOpenHabits && (
+      {onOpenInsights && (
         <p className="mb-4 text-sm text-slate-500">
-          Section stats below. For gym visits, streaks, and time in gym across all days, open{' '}
+          Section-only stats here. For visits, streaks, filters, and export across all training, open{' '}
           <button
             type="button"
-            onClick={onOpenHabits}
+            onClick={onOpenInsights}
             className="font-medium text-cyan-400 underline hover:text-cyan-300"
           >
-            Training habits & attendance
+            Insights
           </button>
           .
         </p>

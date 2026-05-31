@@ -264,9 +264,11 @@ export function buildAttendanceReport(
     const gap = checkInToFirstSetMinutes(dayKey, daySessions)
     if (gap !== null) checkInGaps.push(gap)
 
-    for (const s of daySessions) {
-      sectionVisits.set(s.section, (sectionVisits.get(s.section) ?? 0) + 1)
-      sectionMinutes.set(s.section, (sectionMinutes.get(s.section) ?? 0) + mins)
+    const sectionsThisDay = new Set(daySessions.map((s) => s.section))
+    const share = sectionsThisDay.size > 0 ? mins / sectionsThisDay.size : mins
+    for (const section of sectionsThisDay) {
+      sectionVisits.set(section, (sectionVisits.get(section) ?? 0) + 1)
+      sectionMinutes.set(section, (sectionMinutes.get(section) ?? 0) + share)
     }
 
     let firstSetMs: number | null = null

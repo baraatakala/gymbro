@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { AppView } from './AppViewNav'
 import { TrainingCalendar } from '../analytics/TrainingCalendar'
 
 interface SidebarProps {
@@ -14,7 +15,8 @@ interface SidebarProps {
   onLoadLast: () => void
   onReset: () => void
   onAnalytics: () => void
-  onAttendance?: () => void
+  appView?: AppView
+  onNavigate?: (view: AppView) => void
   onExport: (format: 'json' | 'csv-sets' | 'csv-records') => void
   onAddExercise: () => void
   onBrowseLibrary: () => void
@@ -39,7 +41,8 @@ export function Sidebar({
   onLoadLast,
   onReset,
   onAnalytics,
-  onAttendance,
+  appView = 'workout',
+  onNavigate,
   onExport,
   onAddExercise,
   onBrowseLibrary,
@@ -79,6 +82,28 @@ export function Sidebar({
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-5">
+          {onNavigate && (
+            <section>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Navigate
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <SidebarBtn
+                  onClick={() => onNavigate('workout')}
+                  variant={appView === 'workout' ? 'primary' : 'default'}
+                >
+                  Workout
+                </SidebarBtn>
+                <SidebarBtn
+                  onClick={() => onNavigate('insights')}
+                  variant={appView === 'insights' ? 'primary' : 'default'}
+                >
+                  Insights
+                </SidebarBtn>
+              </div>
+            </section>
+          )}
+
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
               Timer
@@ -164,11 +189,8 @@ export function Sidebar({
             </h3>
             <div className="space-y-2">
               <SidebarBtn onClick={onAnalytics} variant="primary">
-                Progress analytics
+                Section progress
               </SidebarBtn>
-              {onAttendance && (
-                <SidebarBtn onClick={onAttendance}>Training habits & attendance</SidebarBtn>
-              )}
               <SidebarBtn onClick={() => onExport('json')}>Export full backup (JSON)</SidebarBtn>
               <SidebarBtn onClick={() => onExport('csv-sets')}>Export sets (CSV)</SidebarBtn>
               <SidebarBtn onClick={() => onExport('csv-records')}>Export PRs (CSV)</SidebarBtn>
