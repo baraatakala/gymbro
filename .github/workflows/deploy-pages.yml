@@ -1,5 +1,5 @@
 # https://baraatakala.github.io/gymbro/
-# Build uses .env.production (committed publishable key). Optional GitHub secrets override.
+# Vite loads .env.production on build. Do NOT pass empty GitHub secrets — they override the file.
 
 name: Deploy to GitHub Pages
 
@@ -41,16 +41,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" ] && [ -n "$VITE_SUPABASE_ANON_KEY" ]; then
-            export VITE_SUPABASE_PUBLISHABLE_KEY="$VITE_SUPABASE_ANON_KEY"
-          fi
-          npm run build
+      - name: Build (uses committed .env.production)
+        run: npm run build
 
       - name: Publish built files (root + docs)
         run: |
