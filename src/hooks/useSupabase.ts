@@ -17,7 +17,7 @@ export function useSupabase() {
   const checkConnection = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setStatus('disabled')
-      setMessage(supabaseConfigHint())
+      setMessage('Add Supabase env variables')
       return
     }
 
