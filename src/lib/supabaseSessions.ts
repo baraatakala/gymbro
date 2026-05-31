@@ -3,7 +3,7 @@ import { getAllSessions, getWorkoutStorageKeys } from './storage'
 import { mergeSessionsForPrefill } from './sessionMerge'
 import { isCardioSection } from './sectionUtils'
 import { getLocalCheckIn } from './checkIn'
-import { calendarDayKey, isSessionOnLocalToday } from './dateUtils'
+import { gymDayKey, isSessionOnLocalToday } from './dateUtils'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { ensureSupabaseUser, tryEnsureSupabaseUser } from './supabaseAuth'
 import {
@@ -595,7 +595,7 @@ async function consolidateDuplicateSessionsForDay(
   const byDate = new Map<string, typeof rows>()
   for (const row of rows) {
     const ts = Number(row.timestamp)
-    const key = calendarDayKey(ts)
+    const key = gymDayKey(ts)
     const group = byDate.get(key) ?? []
     group.push(row)
     byDate.set(key, group)

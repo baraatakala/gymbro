@@ -63,4 +63,5 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.auto_close_stale_workout_sessions(numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.auto_close_stale_workout_sessions(numeric) FROM anon;
 GRANT EXECUTE ON FUNCTION public.auto_close_stale_workout_sessions(numeric) TO authenticated;

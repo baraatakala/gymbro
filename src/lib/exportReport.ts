@@ -3,7 +3,7 @@ import {
   mergePersonalRecordSources,
 } from './analytics'
 import { isCardioSection } from './sectionUtils'
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import { collapseSessionsByDay } from './sessionMerge'
 import { fetchAllUserSessions } from './supabaseSessions'
 import { getAllSessions } from './storage'
@@ -71,7 +71,7 @@ export async function buildGymBroExport(
   })
 
   const sessionDays = new Set(
-    sections.flatMap((s) => s.sessions.map((sess) => calendarDayKey(sess.timestamp))),
+    sections.flatMap((s) => s.sessions.map((sess) => gymDayKey(sess.timestamp))),
   ).size
   const totalVolumeKg = sections.reduce((n, s) => n + s.stats.totalVolume, 0)
   const totalSets = sections.reduce((n, s) => n + s.stats.setCount, 0)

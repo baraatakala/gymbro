@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase'
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import { tryEnsureSupabaseUser } from './supabaseAuth'
 import {
   fetchSessionsForDay,
@@ -86,7 +86,7 @@ export async function pruneOrphanTrainingDays(userId: string): Promise<number> {
   for (const row of days) {
     const trainedOn = String(row.trained_on).slice(0, 10)
     const hasWork = (allSessions ?? []).some((s) => {
-      if (calendarDayKey(Number(s.timestamp)) !== trainedOn) return false
+      if (gymDayKey(Number(s.timestamp)) !== trainedOn) return false
       const ex = s.exercises as Record<string, unknown> | null
       return ex && Object.keys(ex).length > 0
     })

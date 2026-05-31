@@ -8,7 +8,7 @@ import {
   mergePersonalRecordSources,
   sortPersonalRecords,
 } from './analytics'
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import { sessionHasMeaningfulData } from './sessionMerge'
 import type { Insight, PersonalRecord, WorkoutSession } from '../types/workout'
 
@@ -231,9 +231,9 @@ export function generateInsights(
     })
   }
 
-  const todayKey = calendarDayKey(Date.now())
+  const todayKey = gymDayKey(Date.now())
   const sessionDays = new Set(
-    sessions.filter(sessionHasMeaningfulData).map((s) => calendarDayKey(s.timestamp)),
+    sessions.filter(sessionHasMeaningfulData).map((s) => gymDayKey(s.timestamp)),
   )
   if (sessionDays.has(todayKey)) {
     insights.push({

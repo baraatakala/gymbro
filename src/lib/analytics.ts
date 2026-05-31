@@ -1,4 +1,4 @@
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import {
   collapseSessionsByDay,
   mergeSessionsForPrefill,
@@ -178,13 +178,13 @@ export function exercisesInLatestSession(sessions: WorkoutSession[]): Set<string
   return names
 }
 
-/** Distinct calendar days with logged work (not raw session row count). */
+/** Distinct gym days with logged work (4 AM cutoff; not raw session row count). */
 export function countDistinctSessionDays(sessions: WorkoutSession[]): number {
   if (sessions.length === 0) return 0
   const keys = new Set<string>()
   for (const s of sessions) {
     if (!sessionHasMeaningfulData(s)) continue
-    keys.add(calendarDayKey(s.timestamp))
+    keys.add(gymDayKey(s.timestamp))
   }
   return keys.size
 }
@@ -333,7 +333,7 @@ export function getSectionVolumeTrend(
 export function averageDaysBetweenSessions(sessions: WorkoutSession[]): number | null {
   const keys = [
     ...new Set(
-      sessions.filter(sessionHasMeaningfulData).map((s) => calendarDayKey(s.timestamp)),
+      sessions.filter(sessionHasMeaningfulData).map((s) => gymDayKey(s.timestamp)),
     ),
   ].sort()
   if (keys.length < 2) return null

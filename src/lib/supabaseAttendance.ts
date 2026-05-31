@@ -63,12 +63,6 @@ function mapRow(row: RawRow): AttendanceSession {
   }
 }
 
-/** @deprecated Use startWorkoutSession from activeSession.ts */
-export async function touchSessionCheckIn(section: string): Promise<void> {
-  const { startWorkoutSession } = await import('./activeSession')
-  await startWorkoutSession(section)
-}
-
 export async function fetchAttendanceSessions(lookbackDays = 400): Promise<AttendanceSession[]> {
   if (!supabase || !isSupabaseConfigured) {
     return buildAttendanceFromLocal()
