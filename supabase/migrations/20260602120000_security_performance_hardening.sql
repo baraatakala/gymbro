@@ -55,8 +55,8 @@ DROP POLICY IF EXISTS profiles_own ON public.user_profiles;
 CREATE POLICY profiles_own ON public.user_profiles
   FOR ALL
   TO authenticated
-  USING (user_id = (SELECT auth.uid()))
-  WITH CHECK (user_id = (SELECT auth.uid()));
+  USING (id = (SELECT auth.uid()))
+  WITH CHECK (id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS favourites_own ON public.user_favourite_exercises;
 CREATE POLICY favourites_own ON public.user_favourite_exercises
