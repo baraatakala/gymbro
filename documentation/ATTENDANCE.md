@@ -1,9 +1,14 @@
 # Training habits & attendance
 
-## How to open
+## Main page (primary)
+
+After your plan loads, scroll below the status strip to **Gym habits — your answers**. This panel lists direct answers to every habit question (visits, avg time, streak, weekly goal %, check-in gap, sections, skip days, best hour, long rest). Use date presets or custom range; **Full report →** opens the tabbed modal (sections, patterns, calendar).
+
+## How to open (modal)
 
 | Entry point | Location |
 |-------------|----------|
+| Main dashboard | **Full report →** |
 | Status strip | **📊 Habits** chip (when cloud/local data loaded) |
 | Sidebar | **Training habits & attendance** |
 | Section panel | **Training habits & attendance** button (under Section progress) |
@@ -13,7 +18,7 @@
 
 | Your question | UI location | Data source |
 |---------------|-------------|-------------|
-| Gym visits in month / custom period | Overview → Gym visits + date filters | `training_days` + sessions with sets |
+| Gym visits in month / custom period | **Main dashboard** + Overview | `training_days` + sessions (sets from `workout_sets` or `exercises` JSON) |
 | Average time in gym | Overview → Avg time in gym | Check-in → last set / finish; estimates if same-second saves |
 | Which muscle / section days most | **Sections** tab → bars + list | `workout_sessions.day` |
 | Time per section | Sections → total time bars | Session duration per day |

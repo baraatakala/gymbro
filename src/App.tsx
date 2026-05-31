@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AttendanceDashboard } from './components/analytics/AttendanceDashboard'
 import { AttendanceModal } from './components/analytics/AttendanceModal'
 import { ProgressModal } from './components/analytics/ProgressModal'
 import { Header } from './components/layout/Header'
@@ -32,6 +33,7 @@ import { recordLocalCheckIn } from './lib/checkIn'
 import { touchSessionCheckIn } from './lib/supabaseAttendance'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
+import { useAttendanceData } from './hooks/useAttendanceData'
 import { useWorkoutData } from './hooks/useWorkoutData'
 import { useSupabase } from './hooks/useSupabase'
 import { useTimer } from './hooks/useTimer'
@@ -294,6 +296,28 @@ export default function App() {
 
   const hasPlan = !workout.isInitialLoading && workout.plan.days.length > 0
 
+  const planSectionNames = useMemo(
+    () => workout.plan.days.map((d) => d.name),
+    [workout.plan.days],
+  )
+
+  const attendance = useAttendanceData(
+    planSectionNames,
+    workout.trainingCalendarDates,
+    hasPlan,
+  )
+
+  useEffect(() => {
+    if (!hasPlan || workout.sessionsLoading) return
+    void attendance.reload()
+  }, [
+    hasPlan,
+    workout.sessionsLoading,
+    workout.trainingCalendarDates,
+    workout.sessions.length,
+    attendance.reload,
+  ])
+
   return (
     <div className="page-shell">
       <Header quoteIndex={quoteIndex} />
@@ -313,6 +337,14 @@ export default function App() {
         totalPlanExercises={planExercises.length}
         onOpenHabits={() => setAttendanceOpen(true)}
       />
+
+      {hasPlan && (
+        <AttendanceDashboard
+          attendance={attendance}
+          planSectionCount={workout.plan.days.length}
+          onOpenFull={() => setAttendanceOpen(true)}
+        />
+      )}
 
       {hasPlan &&
         planExercises.length > 0 &&
@@ -807,8 +839,9 @@ export default function App() {
       <AttendanceModal
         open={attendanceOpen}
         onClose={() => setAttendanceOpen(false)}
-        planSections={workout.plan.days.map((d) => d.name)}
+        planSections={planSectionNames}
         trainingCalendarDates={workout.trainingCalendarDates}
+        attendance={attendance}
       />
 
       <ProgressModal

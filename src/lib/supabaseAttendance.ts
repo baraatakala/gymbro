@@ -9,6 +9,7 @@ type RawRow = {
   id: string
   day: string
   timestamp: number
+  exercises?: unknown
   started_at?: string | null
   finished_at?: string | null
   status?: string | null
@@ -19,12 +20,38 @@ type RawRow = {
   }[]
 }
 
+function setsFromExercisesJson(exercises: unknown, timestamp: number): AttendanceSetLog[] {
+  if (!exercises || typeof exercises !== 'object') return []
+  const ex = exercises as Record<string, Record<string, number>>
+  const sets: AttendanceSetLog[] = []
+  let offset = 0
+  for (const [exerciseName, sw] of Object.entries(ex)) {
+    const keys = Object.keys(sw).sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g, ''), 10)
+      const nb = parseInt(b.replace(/\D/g, ''), 10)
+      return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+    })
+    keys.forEach((_, idx) => {
+      sets.push({
+        exerciseName,
+        setNumber: idx + 1,
+        loggedAt: new Date(timestamp + offset * 60_000).toISOString(),
+      })
+      offset += 1
+    })
+  }
+  return sets
+}
+
 function mapRow(row: RawRow): AttendanceSession {
-  const sets: AttendanceSetLog[] = (row.workout_sets ?? []).map((s) => ({
+  let sets: AttendanceSetLog[] = (row.workout_sets ?? []).map((s) => ({
     exerciseName: s.exercise_name,
     setNumber: s.set_number,
     loggedAt: s.logged_at ?? new Date(row.timestamp).toISOString(),
   }))
+  if (sets.length === 0) {
+    sets = setsFromExercisesJson(row.exercises, Number(row.timestamp))
+  }
 
   return {
     id: row.id,
@@ -85,6 +112,7 @@ export async function fetchAttendanceSessions(lookbackDays = 400): Promise<Atten
       id,
       day,
       timestamp,
+      exercises,
       started_at,
       finished_at,
       status,
@@ -107,6 +135,7 @@ export async function fetchAttendanceSessions(lookbackDays = 400): Promise<Atten
         id,
         day,
         timestamp,
+        exercises,
         workout_sets ( exercise_name, set_number, weight_kg, reps )
       `,
       )
@@ -121,12 +150,14 @@ export async function fetchAttendanceSessions(lookbackDays = 400): Promise<Atten
         id: string
         day: string
         timestamp: number
+        exercises?: unknown
         workout_sets?: { exercise_name: string; set_number: number }[]
       }
       return {
         id: r.id,
         day: r.day,
         timestamp: r.timestamp,
+        exercises: r.exercises,
         started_at: null,
         finished_at: null,
         status: null,
@@ -141,9 +172,7 @@ export async function fetchAttendanceSessions(lookbackDays = 400): Promise<Atten
     throw error
   }
 
-  return (data ?? [])
-    .map((row) => mapRow(row as RawRow))
-    .filter((s) => s.sets.length > 0)
+  return (data ?? []).map((row) => mapRow(row as RawRow))
 }
 
 function buildAttendanceFromLocal(): AttendanceSession[] {

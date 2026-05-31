@@ -1,15 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { AttendanceBars } from './AttendanceBars'
-import {
-  buildAttendanceReport,
-  defaultDateRange,
-  normalizeDateRange,
-  toIsoDate,
-} from '../../lib/attendanceAnalytics'
-import { getWeeklyTargetDays, setWeeklyTargetDays } from '../../lib/attendancePrefs'
-import { loadAttendanceDataset } from '../../lib/supabaseAttendance'
-import type { AttendanceReport } from '../../types/attendance'
+import { toIsoDate } from '../../lib/attendanceAnalytics'
+import type { useAttendanceData } from '../../hooks/useAttendanceData'
 import { TrainingCalendar } from './TrainingCalendar'
 
 interface AttendanceModalProps {
@@ -17,6 +10,7 @@ interface AttendanceModalProps {
   onClose: () => void
   planSections: string[]
   trainingCalendarDates?: string[]
+  attendance: ReturnType<typeof useAttendanceData>
 }
 
 type Preset = '30' | '90' | '180' | '365' | 'custom'
@@ -40,61 +34,40 @@ const FEATURE_COVERAGE = [
 export function AttendanceModal({
   open,
   onClose,
-  planSections,
   trainingCalendarDates = [],
+  attendance,
 }: AttendanceModalProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [trainedDates, setTrainedDates] = useState<string[]>(trainingCalendarDates)
-  const [sessions, setSessions] = useState<Awaited<ReturnType<typeof loadAttendanceDataset>>['sessions']>([])
-  const [range, setRange] = useState(defaultDateRange)
+  const {
+    loading,
+    error,
+    report: reportRaw,
+    range,
+    setRange,
+    weeklyTarget,
+    setWeeklyTarget,
+    reload,
+    applyPreset: applyDaysPreset,
+  } = attendance
+
+  const report = open && !loading ? reportRaw : null
+
   const [preset, setPreset] = useState<Preset>('90')
-  const [weeklyTarget, setWeeklyTarget] = useState(getWeeklyTargetDays())
   const [sectionFilter, setSectionFilter] = useState('')
   const [sectionSort, setSectionSort] = useState<SectionSort>('visits')
   const [tab, setTab] = useState<HabitsTab>('overview')
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await loadAttendanceDataset(400)
-      setTrainedDates(data.trainedDates.length > 0 ? data.trainedDates : trainingCalendarDates)
-      setSessions(data.sessions)
-    } catch (e) {
-      setSessions([])
-      setError(e instanceof Error ? e.message : 'Could not load attendance data')
-    } finally {
-      setLoading(false)
-    }
-  }, [trainingCalendarDates])
-
   useEffect(() => {
     if (!open) return
     setTab('overview')
-    setWeeklyTarget(getWeeklyTargetDays())
-    void loadData()
-  }, [open, loadData])
+    void reload()
+  }, [open, reload])
 
   const applyPreset = (p: Preset) => {
     setPreset(p)
-    const to = new Date()
-    const from = new Date()
     if (p === 'custom') return
     const days = p === '30' ? 29 : p === '90' ? 89 : p === '180' ? 179 : 364
-    from.setDate(from.getDate() - days)
-    setRange({ from: toIsoDate(from), to: toIsoDate(to) })
+    applyDaysPreset(days)
   }
-
-  const effectiveRange = useMemo(() => normalizeDateRange(range), [range])
-
-  const report: AttendanceReport | null = useMemo(() => {
-    if (!open || loading) return null
-    return buildAttendanceReport(trainedDates, sessions, effectiveRange, {
-      weeklyTargetDays: weeklyTarget,
-      planSections,
-    })
-  }, [open, loading, trainedDates, sessions, effectiveRange, weeklyTarget, planSections])
 
   const filteredSections = useMemo(() => {
     if (!report) return []
@@ -109,11 +82,6 @@ export function AttendanceModal({
     }
     return list
   }, [report, sectionFilter, sectionSort])
-
-  const saveTarget = (n: number) => {
-    setWeeklyTargetDays(n)
-    setWeeklyTarget(n)
-  }
 
   const todayIso = toIsoDate(new Date())
 
@@ -165,7 +133,7 @@ export function AttendanceModal({
         ))}
         <button
           type="button"
-          onClick={() => void loadData()}
+          onClick={() => void reload()}
           disabled={loading}
           className="btn-ghost ml-auto py-1.5 text-xs disabled:opacity-50"
         >
@@ -182,7 +150,7 @@ export function AttendanceModal({
             value={range.from}
             onChange={(e) => {
               setPreset('custom')
-              setRange((r) => ({ ...r, from: e.target.value }))
+              setRange({ ...range, from: e.target.value })
             }}
             className="input-field mt-1 w-full py-2 text-sm"
           />
@@ -196,7 +164,7 @@ export function AttendanceModal({
             value={range.to}
             onChange={(e) => {
               setPreset('custom')
-              setRange((r) => ({ ...r, to: e.target.value }))
+              setRange({ ...range, to: e.target.value })
             }}
             className="input-field mt-1 w-full py-2 text-sm"
           />
@@ -207,7 +175,7 @@ export function AttendanceModal({
         Weekly gym target (days)
         <select
           value={weeklyTarget}
-          onChange={(e) => saveTarget(parseInt(e.target.value, 10))}
+          onChange={(e) => setWeeklyTarget(parseInt(e.target.value, 10) || 4)}
           className="input-field py-2 text-sm"
           aria-label="Weekly gym target"
         >
@@ -246,7 +214,7 @@ export function AttendanceModal({
       {error && !loading && (
         <div className="mb-4 rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3">
           <p className="text-sm text-red-200">{error}</p>
-          <button type="button" onClick={() => void loadData()} className="btn-secondary mt-3 text-xs">
+          <button type="button" onClick={() => void reload()} className="btn-secondary mt-3 text-xs">
             Retry
           </button>
         </div>
@@ -458,7 +426,7 @@ export function AttendanceModal({
           {tab === 'calendar' && (
             <section>
               <h3 className="mb-3 text-sm font-semibold text-slate-300">Training calendar</h3>
-              <TrainingCalendar trainedDates={trainedDates} />
+              <TrainingCalendar trainedDates={trainingCalendarDates} />
             </section>
           )}
         </div>
