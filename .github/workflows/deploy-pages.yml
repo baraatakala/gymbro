@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - 'index.html'
       - 'assets/**'
+      - 'quotes/**'
       - 'docs/**'
   workflow_dispatch:
 
@@ -48,20 +49,21 @@ jobs:
 
       - name: Publish built files (root + docs)
         run: |
-          rm -rf docs assets
+          rm -rf docs assets quotes
           mkdir -p docs
           cp -r dist/* docs/
           touch docs/.nojekyll
           cp dist/index.html index.html
           cp dist/index.html docs/index.html
           cp -r dist/assets assets
+          cp -r dist/quotes quotes
           touch .nojekyll
 
       - name: Commit site output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html assets docs .nojekyll
+          git add index.html assets quotes docs .nojekyll
           if git diff --staged --quiet; then
             echo "Site files unchanged"
           else
