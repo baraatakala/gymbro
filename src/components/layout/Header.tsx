@@ -50,13 +50,16 @@ export function Header({
       )}
 
       {showMotivation && (
-      <div className="lg:hidden">
-        <QuoteGallery
-          variant="carousel"
-          activeIndex={quoteIndex % QUOTE_IMAGES.length}
-          onIndexChange={onQuoteIndexChange}
-        />
-      </div>
+        <details className="motivation-mobile lg:hidden">
+          <summary>Daily spark</summary>
+          <div className="px-2 pb-2">
+            <QuoteGallery
+              variant="peek"
+              activeIndex={quoteIndex % QUOTE_IMAGES.length}
+              onIndexChange={onQuoteIndexChange}
+            />
+          </div>
+        </details>
       )}
     </header>
   )

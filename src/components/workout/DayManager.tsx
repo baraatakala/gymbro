@@ -52,9 +52,14 @@ export function DayManager({
   }, [activeDayId])
 
   return (
-    <div className="glass-panel-strong mb-4 p-3 sm:p-4 lg:hidden">
+    <details className="glass-panel-strong mb-3 p-0 lg:hidden" open>
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
+        Sections ({days.length}) · {activeDayName}
+        <span className="ml-2 text-xs font-normal text-slate-500">tap to collapse</span>
+      </summary>
+      <div className="border-t border-slate-800/80 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-white">
+        <h2 className="sr-only">
           Workout sections{' '}
           <span className="text-emerald-400">({days.length})</span>
           {emptyCount > 0 && (
@@ -207,6 +212,7 @@ export function DayManager({
           </>
         )}
       </div>
-    </div>
+      </div>
+    </details>
   )
 }

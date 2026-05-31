@@ -46,7 +46,7 @@ export function StatusStrip({
 
         <div className="flex flex-wrap gap-2 text-xs text-slate-500 sm:text-sm">
           {libraryExercises > 0 && (
-            <span className="chip border-slate-700/80 bg-slate-800/50 text-slate-400">
+            <span className="chip hidden border-slate-700/80 bg-slate-800/50 text-slate-400 sm:inline-flex">
               {libraryExercises} exercises · {libraryMuscles} groups
             </span>
           )}

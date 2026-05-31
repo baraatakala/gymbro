@@ -11,7 +11,7 @@ export const QUOTE_IMAGES = [
 ] as const
 
 interface QuoteGalleryProps {
-  variant?: 'featured' | 'carousel'
+  variant?: 'featured' | 'carousel' | 'peek'
   activeIndex?: number
   onIndexChange?: (index: number) => void
 }
@@ -48,6 +48,57 @@ export function QuoteGallery({
   }, [variant, controlledIndex])
 
   const current = QUOTE_IMAGES[index]
+
+  if (variant === 'peek') {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          className="block w-full overflow-hidden rounded-lg bg-slate-950 ring-1 ring-slate-700/50"
+          aria-label="View quote full size"
+        >
+          <img
+            key={current.src}
+            src={current.src}
+            alt={current.alt}
+            loading="lazy"
+            decoding="async"
+            className="aspect-[16/9] max-h-28 w-full object-contain object-center"
+          />
+        </button>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex gap-1">
+            {QUOTE_IMAGES.map((img, i) => (
+              <button
+                key={img.src}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`Quote ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === index ? 'w-4 bg-emerald-400' : 'w-1.5 bg-slate-600'
+                }`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            className="text-[10px] font-medium text-emerald-500/90"
+          >
+            Enlarge
+          </button>
+        </div>
+        <Modal open={lightboxOpen} onClose={() => setLightboxOpen(false)} title="Motivation" wide>
+          <img
+            src={current.src}
+            alt={current.alt}
+            className="mx-auto max-h-[min(70vh,520px)] w-full rounded-xl object-contain"
+          />
+        </Modal>
+      </>
+    )
+  }
 
   if (variant === 'featured') {
     return (

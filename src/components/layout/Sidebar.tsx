@@ -61,22 +61,23 @@ export function Sidebar({
           : 'bg-slate-500'
   return (
     <>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="fab-settings"
-        aria-label={open ? 'Close panel' : 'Open panel'}
-      >
-        {open ? '✕' : '⚙'}
-      </button>
-
       <aside
         className={`fixed right-0 top-0 z-30 flex h-full w-[min(360px,92vw)] flex-col border-l border-slate-700/60 bg-slate-900/95 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="border-b border-slate-800/80 bg-slate-950/50 px-5 py-4">
-          <h2 className="text-base font-bold text-white">Control panel</h2>
-          <p className="mt-1 text-xs text-slate-400">{currentDay} · {exerciseCount} exercises</p>
+        <div className="flex items-start justify-between border-b border-slate-800/80 bg-slate-950/50 px-5 py-4">
+          <div>
+            <h2 className="text-base font-bold text-white">Settings</h2>
+            <p className="mt-1 text-xs text-slate-400">{currentDay} · {exerciseCount} exercises</p>
+          </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+            aria-label="Close settings"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-5">
