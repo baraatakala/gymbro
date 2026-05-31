@@ -21,7 +21,7 @@ interface ExerciseCardProps {
   saved?: boolean
   saving?: boolean
   defaultRestSeconds?: number
-  onStartRest?: (seconds: number) => void
+  onStartRest?: (seconds: number, exerciseName: string) => void
   /** Increment to expand/collapse all cards from parent. */
   expandSignal?: number
   expandMode?: 'expand' | 'collapse'
@@ -117,7 +117,7 @@ export function ExerciseCard({
 
     try {
       await onSave(parsed)
-      onStartRest?.(defaultRestSeconds)
+      onStartRest?.(defaultRestSeconds, displayName)
     } catch {
       /* Parent shows error toast */
     }

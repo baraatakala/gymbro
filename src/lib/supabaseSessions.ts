@@ -2,6 +2,7 @@ import { validateSetEntries } from './validators'
 import { getAllSessions, getWorkoutStorageKeys } from './storage'
 import { mergeSessionsForPrefill } from './sessionMerge'
 import { isCardioSection } from './sectionUtils'
+import { getLocalCheckIn } from './checkIn'
 import { calendarDayKey, isSessionOnLocalToday } from './dateUtils'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { ensureSupabaseUser, tryEnsureSupabaseUser } from './supabaseAuth'
@@ -781,6 +782,7 @@ export async function saveExerciseToSupabase(
 
     const totalVolume = await recalcSessionVolume(sessionId)
 
+    const checkInPatch = getLocalCheckIn(day)
     const { error: updateError } = await supabase
       .from('workout_sessions')
       .update({
@@ -790,12 +792,14 @@ export async function saveExerciseToSupabase(
         finished_at: now.toISOString(),
         status: 'in_progress',
         total_volume_kg: totalVolume,
+        ...(checkInPatch ? { started_at: checkInPatch } : {}),
       })
       .eq('id', sessionId)
 
     if (updateError) throw updateError
   } else {
     storageKey = `${day}_${timestamp}`
+    const checkInAt = getLocalCheckIn(day) ?? now.toISOString()
     const { data: sessionRow, error: sessionError } = await supabase
       .from('workout_sessions')
       .insert({
@@ -806,7 +810,7 @@ export async function saveExerciseToSupabase(
         save_date: now.toLocaleDateString('en-GB'),
         exercises: { [exerciseName]: legacy },
         user_id: userId,
-        started_at: now.toISOString(),
+        started_at: checkInAt,
         finished_at: now.toISOString(),
         status: 'in_progress',
         total_volume_kg: volume,

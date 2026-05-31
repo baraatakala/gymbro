@@ -14,6 +14,7 @@ interface SidebarProps {
   onLoadLast: () => void
   onReset: () => void
   onAnalytics: () => void
+  onAttendance?: () => void
   onExport: (format: 'json' | 'csv-sets' | 'csv-records') => void
   onAddExercise: () => void
   onBrowseLibrary: () => void
@@ -38,6 +39,7 @@ export function Sidebar({
   onLoadLast,
   onReset,
   onAnalytics,
+  onAttendance,
   onExport,
   onAddExercise,
   onBrowseLibrary,
@@ -164,6 +166,9 @@ export function Sidebar({
               <SidebarBtn onClick={onAnalytics} variant="primary">
                 Progress analytics
               </SidebarBtn>
+              {onAttendance && (
+                <SidebarBtn onClick={onAttendance}>Training habits & attendance</SidebarBtn>
+              )}
               <SidebarBtn onClick={() => onExport('json')}>Export full backup (JSON)</SidebarBtn>
               <SidebarBtn onClick={() => onExport('csv-sets')}>Export sets (CSV)</SidebarBtn>
               <SidebarBtn onClick={() => onExport('csv-records')}>Export PRs (CSV)</SidebarBtn>

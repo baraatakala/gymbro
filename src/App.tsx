@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AttendanceModal } from './components/analytics/AttendanceModal'
 import { ProgressModal } from './components/analytics/ProgressModal'
 import { Header } from './components/layout/Header'
 import { StatusStrip } from './components/layout/StatusStrip'
@@ -27,6 +28,8 @@ import {
   sessionsTodayOnly,
 } from './lib/sessionMerge'
 import { isCardioSection } from './lib/sectionUtils'
+import { recordLocalCheckIn } from './lib/checkIn'
+import { touchSessionCheckIn } from './lib/supabaseAttendance'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
 import { useWorkoutData } from './hooks/useWorkoutData'
@@ -40,6 +43,7 @@ export default function App() {
   const [activeDayId, setActiveDayId] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const [attendanceOpen, setAttendanceOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [roadmapOpen, setRoadmapOpen] = useState(false)
   const [quoteIndex, setQuoteIndex] = useState(0)
@@ -142,10 +146,15 @@ export default function App() {
     setSavedExercises(new Set())
     setQuoteIndex((i) => i + 1)
     setPrefillKey((k) => k + 1)
-  }, [])
+    recordLocalCheckIn(name)
+    void touchSessionCheckIn(name)
+    timer.startWorkout()
+  }, [timer])
 
   const saveExercise = useCallback(
     async (exerciseName: string, sets: SetEntry[]) => {
+      recordLocalCheckIn(sectionName)
+      void touchSessionCheckIn(sectionName)
       timer.startWorkout()
       setSavingExercise(exerciseName)
       try {
@@ -568,7 +577,9 @@ export default function App() {
                         }
                       }}
                       onError={(msg) => show(msg, 'error')}
-                      onStartRest={(sec) => timer.startRest(sec)}
+                      onStartRest={(sec, ex) =>
+                        timer.startRest(sec, { section: sectionName, exercise: ex })
+                      }
                     />
                   ))}
                 </>
@@ -769,6 +780,10 @@ export default function App() {
           setAnalyticsOpen(true)
           setSidebarOpen(false)
         }}
+        onAttendance={() => {
+          setAttendanceOpen(true)
+          setSidebarOpen(false)
+        }}
         onExport={(format) => {
           void handleExport(format)
         }}
@@ -778,6 +793,13 @@ export default function App() {
           setRoadmapOpen(true)
           setSidebarOpen(false)
         }}
+        trainingCalendarDates={workout.trainingCalendarDates}
+      />
+
+      <AttendanceModal
+        open={attendanceOpen}
+        onClose={() => setAttendanceOpen(false)}
+        planSections={workout.plan.days.map((d) => d.name)}
         trainingCalendarDates={workout.trainingCalendarDates}
       />
 

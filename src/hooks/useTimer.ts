@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { logRestEvent } from '../lib/restEventLog'
 
 function formatDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000)
@@ -11,11 +12,17 @@ function formatDuration(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+export interface RestMeta {
+  section: string
+  exercise: string
+}
+
 export function useTimer() {
   const [workoutStart, setWorkoutStart] = useState<number | null>(null)
   const [restEnd, setRestEnd] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
   const intervalRef = useRef<number | null>(null)
+  const restMetaRef = useRef<(RestMeta & { startedAt: number; plannedSec: number }) | null>(null)
 
   useEffect(() => {
     intervalRef.current = window.setInterval(() => setNow(Date.now()), 1000)
@@ -28,17 +35,38 @@ export function useTimer() {
     setWorkoutStart((prev) => prev ?? Date.now())
   }, [])
 
-  const startRest = useCallback((seconds = 90) => {
-    setRestEnd(Date.now() + seconds * 1000)
+  const startRest = useCallback((seconds = 90, meta?: RestMeta) => {
+    const startedAt = Date.now()
+    restMetaRef.current = meta
+      ? { ...meta, startedAt, plannedSec: seconds }
+      : null
+    setRestEnd(startedAt + seconds * 1000)
   }, [])
 
-  const stopRest = useCallback(() => setRestEnd(null), [])
+  const stopRest = useCallback(() => {
+    const meta = restMetaRef.current
+    if (meta) {
+      const elapsed = Math.round((Date.now() - meta.startedAt) / 1000)
+      if (elapsed >= 20) {
+        logRestEvent(meta.section, meta.exercise, elapsed)
+      }
+    }
+    restMetaRef.current = null
+    setRestEnd(null)
+  }, [])
 
   const workoutElapsed = workoutStart ? now - workoutStart : 0
   const restRemaining = restEnd ? Math.max(0, restEnd - now) : 0
 
   useEffect(() => {
-    if (restEnd && restRemaining === 0) setRestEnd(null)
+    if (restEnd && restRemaining === 0) {
+      const meta = restMetaRef.current
+      if (meta) {
+        logRestEvent(meta.section, meta.exercise, meta.plannedSec)
+        restMetaRef.current = null
+      }
+      setRestEnd(null)
+    }
   }, [restEnd, restRemaining])
 
   return {
