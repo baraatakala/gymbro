@@ -21,6 +21,19 @@ Run via Cursor MCP (`user-supabase` → `get_advisors`) or Dashboard → Databas
 | Unused indexes (INFO) | Keep `workout_sessions_user_timestamp_idx` for attendance fetch; stats may show unused on small DB |
 | `workout_sessions_user_day_ts_idx` unused | Still used for per-section history queries |
 
+## Two places store set data
+
+| Store | Role |
+|-------|------|
+| `workout_sets` | **Source of truth** (one row per set) |
+| `workout_sessions.exercises` | JSON snapshot; kept in sync by trigger `trg_sync_session_exercises_from_sets` |
+
+Deleting only `workout_sets` rows used to leave stale JSON on the session — the app then still showed Cable Fly / volume. Trigger + client now treat **empty `workout_sets`** as no logged sets.
+
+To wipe today’s lifts: delete `workout_sets` for that session (trigger clears JSON), or delete the `workout_sessions` row, or use **Settings → clear history**. Hard refresh after DB edits.
+
+**Important:** Clearing sets only in the Table Editor does not clear **browser localStorage**. The app used to re-upload local logs on load; it now skips sync when the cloud session is empty and removes matching local keys.
+
 ## Frontend analytics alignment
 
 - **Gym day** (`gymDayKey`, 4 AM cutoff): streaks, Insights, export totals, session merge, duplicate consolidation

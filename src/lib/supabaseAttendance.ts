@@ -48,7 +48,7 @@ function mapRow(row: RawRow): AttendanceSession {
     setNumber: s.set_number,
     loggedAt: s.logged_at ?? new Date(row.timestamp).toISOString(),
   }))
-  if (sets.length === 0) {
+  if (sets.length === 0 && row.workout_sets === undefined) {
     sets = setsFromExercisesJson(row.exercises, Number(row.timestamp))
   }
 

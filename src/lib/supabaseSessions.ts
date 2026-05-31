@@ -148,12 +148,18 @@ function mapSessionRow(row: {
     exercises[s.exercise_name][`Set ${s.set_number}`] = Number(s.weight_kg)
   }
 
+  /** When workout_sets was joined, empty means no rows — do not show stale sessions.exercises JSON. */
+  const setsRelationLoaded = row.workout_sets !== undefined
   const legacyExercises =
     Object.keys(exercises).length > 0
       ? exercises
-      : (row.exercises as Record<string, Record<string, number>>) ?? {}
+      : setsRelationLoaded
+        ? {}
+        : (row.exercises as Record<string, Record<string, number>>) ?? {}
 
-  const storedVolume = Number(row.total_volume_kg ?? 0)
+  const storedVolume = setsRelationLoaded && sets.length === 0
+    ? 0
+    : Number(row.total_volume_kg ?? 0)
 
   return {
     id: row.id,
@@ -224,6 +230,45 @@ function exercisesOnSession(session: WorkoutSession): Record<string, SetEntry[]>
   return out
 }
 
+/** Cloud session exists but has no sets/JSON — do not resurrect from localStorage. */
+async function isStorageKeyClearedInCloud(
+  storageKey: string,
+  userId: string,
+): Promise<boolean> {
+  if (!supabase) return false
+  const { data: row } = await supabase
+    .from('workout_sessions')
+    .select('id, exercises')
+    .eq('storage_key', storageKey)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!row?.id) return false
+
+  const { count } = await supabase
+    .from('workout_sets')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', row.id as string)
+
+  const ex = (row.exercises ?? {}) as Record<string, unknown>
+  return (count ?? 0) === 0 && Object.keys(ex).length === 0
+}
+
+/** Drop local keys that match intentionally cleared cloud sessions (after DB delete). */
+export async function purgeLocalSessionsClearedInCloud(): Promise<number> {
+  if (!supabase || !isSupabaseConfigured) return 0
+  const auth = await tryEnsureSupabaseUser()
+  if (!auth.ok) return 0
+
+  let removed = 0
+  for (const key of getWorkoutStorageKeys()) {
+    if (await isStorageKeyClearedInCloud(key, auth.userId)) {
+      localStorage.removeItem(key)
+      removed++
+    }
+  }
+  return removed
+}
+
 async function pushLocalSessionsToCloud(
   userId: string,
   localSessions: WorkoutSession[],
@@ -236,6 +281,12 @@ async function pushLocalSessionsToCloud(
     const byExercise = exercisesOnSession(session)
     const names = Object.keys(byExercise)
     if (names.length === 0) {
+      skipped++
+      continue
+    }
+
+    if (await isStorageKeyClearedInCloud(session.key, userId)) {
+      localStorage.removeItem(session.key)
       skipped++
       continue
     }
@@ -343,6 +394,9 @@ async function upsertExerciseOnStoredSession(
 
   if (row) {
     sessionId = row.id as string
+    if (await isStorageKeyClearedInCloud(session.key, userId)) {
+      return
+    }
     const prev = (row.exercises as Record<string, Record<string, number>>) ?? {}
     const mergedExercises = { ...prev, [exerciseName]: legacy }
 

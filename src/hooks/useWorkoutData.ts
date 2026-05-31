@@ -15,6 +15,7 @@ import {
   hasLocalWorkoutData,
   saveExerciseToSupabase,
   syncLocalSessionsToCloud,
+  purgeLocalSessionsClearedInCloud,
   type SaveSetResult,
 } from '../lib/supabaseSessions'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -143,6 +144,7 @@ export function useWorkoutData(activeDayId: string, activeDayName: string) {
         await claimOrphanSessionsForUser(auth.userId)
         claimedOrphansRef.current = true
       }
+      await purgeLocalSessionsClearedInCloud()
       if (!syncedLocalRef.current && hasLocalWorkoutData()) {
         const { uploaded } = await syncLocalSessionsToCloud()
         syncedLocalRef.current = true
@@ -192,6 +194,7 @@ export function useWorkoutData(activeDayId: string, activeDayName: string) {
         await claimOrphanSessionsForUser(auth.userId)
         claimedOrphansRef.current = true
       }
+      await purgeLocalSessionsClearedInCloud()
       if (!syncedLocalRef.current && hasLocalWorkoutData()) {
         const { uploaded } = await syncLocalSessionsToCloud()
         syncedLocalRef.current = true
@@ -299,6 +302,7 @@ export function useWorkoutData(activeDayId: string, activeDayName: string) {
           setSessions(result.sessions)
           setDataSource('supabase')
         }
+        await purgeLocalSessionsClearedInCloud()
         if (hasLocalWorkoutData()) {
           await syncLocalSessionsToCloud()
         }
