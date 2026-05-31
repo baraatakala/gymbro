@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node -e \"require('fs').copyFileSync('dist/index.dev.html','dist/index.html')\"",
     "preview": "vite preview",
-    "preview:pages": "vite preview --base /gymbro/"
+    "preview:pages": "vite preview --base /gymbro/",
+    "audit:supabase": "node scripts/audit-supabase.mjs",
+    "verify:deploy": "node scripts/verify-deploy.mjs",
+    "publish:pages": "node scripts/publish-pages.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

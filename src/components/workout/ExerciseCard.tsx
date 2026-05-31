@@ -139,10 +139,10 @@ export function ExerciseCard({
 
   return (
     <article
-      className={`rounded-2xl border transition-all duration-300 ${
+      className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
         saved
-          ? 'animate-save-pulse border-emerald-500/60 bg-emerald-950/25 shadow-sm shadow-emerald-900/20'
-          : 'border-slate-700/80 bg-slate-900/60 hover:border-slate-600'
+          ? 'animate-save-pulse border-emerald-500/50 bg-gradient-to-b from-emerald-950/40 to-slate-900/60 shadow-md shadow-emerald-950/25 ring-1 ring-emerald-500/20'
+          : 'border-slate-700/70 bg-slate-900/50 hover:border-slate-600/80 hover:bg-slate-900/70'
       }`}
       data-plan-exercise-id={planExerciseId}
     >
@@ -163,7 +163,7 @@ export function ExerciseCard({
                   void handleRename()
                 }
               }}
-              className="w-full rounded border border-slate-600 bg-slate-950 px-2 py-1 text-white"
+              className="input-field py-2 text-sm"
             />
           ) : (
             <h3 className="flex min-w-0 items-center gap-2 truncate font-semibold text-white">
@@ -254,7 +254,7 @@ export function ExerciseCard({
                   <button
                     type="button"
                     onClick={() => adjustPrimary(i, -step)}
-                    className="h-11 w-11 shrink-0 rounded-xl bg-slate-800 text-sm font-medium text-slate-300 hover:bg-slate-700"
+                    className="tap-target shrink-0 rounded-xl border border-slate-600/80 bg-slate-800/80 text-sm font-semibold text-slate-200 hover:bg-slate-700"
                   >
                     −{step}
                   </button>
@@ -275,7 +275,7 @@ export function ExerciseCard({
                         return next
                       })
                     }}
-                    className="h-11 min-w-0 flex-1 rounded-xl border border-slate-600 bg-slate-950 px-3 text-center text-base text-white"
+                    className="input-field flex-1 text-center text-lg font-semibold tabular-nums"
                   />
                   {!isCardio && (
                     <input
@@ -290,13 +290,13 @@ export function ExerciseCard({
                           return next
                         })
                       }}
-                      className="h-11 w-16 rounded-xl border border-slate-600 bg-slate-950 text-center text-white"
+                      className="input-field w-16 text-center font-semibold tabular-nums"
                     />
                   )}
                   <button
                     type="button"
                     onClick={() => adjustPrimary(i, step)}
-                    className="h-11 w-11 shrink-0 rounded-xl bg-slate-800 text-sm font-medium text-slate-300 hover:bg-slate-700"
+                    className="tap-target shrink-0 rounded-xl border border-slate-600/80 bg-slate-800/80 text-sm font-semibold text-slate-200 hover:bg-slate-700"
                   >
                     +{step}
                   </button>

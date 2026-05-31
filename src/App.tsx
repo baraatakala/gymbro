@@ -286,7 +286,7 @@ export default function App() {
   const hasPlan = !workout.isInitialLoading && workout.plan.days.length > 0
 
   return (
-    <div className="mx-auto min-h-screen max-w-5xl px-4 pb-36 pt-8 sm:px-6 lg:pb-28">
+    <div className="page-shell">
       <Header quoteIndex={quoteIndex} />
 
       <StatusStrip
@@ -309,7 +309,7 @@ export default function App() {
         !sessionsLookCorrupt(workout.sessions) &&
         allTimeStats.totalSessions === 0 &&
         !workout.sessions.some(sessionHasLoggedExercises) && (
-          <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-400">
+          <div className="glass-panel mb-4 border-emerald-500/20 bg-emerald-950/20 px-4 py-3.5 text-sm text-slate-300">
             <p>
               <span className="font-medium text-slate-200">Getting started on {sectionName}:</span>{' '}
               expand any exercise below, enter your sets, and tap <span className="text-emerald-400">Save</span>.
@@ -439,8 +439,8 @@ export default function App() {
             />
           )}
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setLibraryOpen(true)} className="btn-primary">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button type="button" onClick={() => setLibraryOpen(true)} className="btn-primary w-full sm:w-auto">
               + From library ({workout.libraryStats.exercises || '…'})
             </button>
             {mergedLastSession && (
@@ -471,7 +471,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(360px,32%)] lg:items-start lg:gap-8">
             <main className="relative space-y-4" key={`${activeDayId}-${prefillKey}`}>
               {workout.sessionsLoading && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-slate-950/50 pt-12 backdrop-blur-[2px]">
@@ -587,7 +587,7 @@ export default function App() {
 
             <aside className="hidden lg:block">
               <div className="sticky top-6 space-y-4">
-                <div className="glass-panel p-5">
+                <div className="glass-panel-strong p-5">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Today · {sectionName}
                   </p>
@@ -833,9 +833,9 @@ function MiniStat({
   sub?: string
 }) {
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-white">
+    <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 p-3 ring-1 ring-white/5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-white">
         {value}
         {sub ? <span className="ml-1 text-xs text-slate-500">{sub}</span> : null}
       </p>

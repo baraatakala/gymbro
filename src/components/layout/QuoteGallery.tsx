@@ -9,26 +9,28 @@ const QUOTE_IMAGES = [
 
 export function QuoteGallery() {
   return (
-    <div className="mt-5">
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {QUOTE_IMAGES.map((img) => (
-          <figure
-            key={img.src}
-            className="snap-start shrink-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/60 shadow"
-          >
-            <img
-              src={img.src}
-              alt={img.alt}
-              loading="lazy"
-              className="h-[110px] w-[240px] object-cover sm:h-[120px] sm:w-[260px]"
-            />
-          </figure>
-        ))}
+    <div className="mt-5 sm:mt-6">
+      <div className="quote-scroll-fade -mx-1 px-1">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {QUOTE_IMAGES.map((img) => (
+            <figure
+              key={img.src}
+              className="snap-center shrink-0 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900 shadow-lg ring-1 ring-white/5"
+            >
+              <img
+                src={img.src}
+                alt={img.alt}
+                loading="lazy"
+                decoding="async"
+                className="h-[100px] w-[min(72vw,260px)] object-cover sm:h-[118px] sm:w-[280px]"
+              />
+            </figure>
+          ))}
+        </div>
       </div>
-      <p className="mt-2 text-center text-xs text-slate-500">
-        Swipe for motivation.
+      <p className="mt-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-slate-600">
+        Swipe for motivation
       </p>
     </div>
   )
 }
-

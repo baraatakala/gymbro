@@ -22,14 +22,15 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
       <div
-        className={`max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-slate-700 bg-slate-900 shadow-2xl sm:rounded-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
+        className={`glass-panel-strong max-h-[92vh] w-full overflow-hidden rounded-t-2xl sm:rounded-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">

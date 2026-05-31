@@ -54,7 +54,7 @@ export function DayManager({
   }, [activeDayId])
 
   return (
-    <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 shadow-lg shadow-black/20">
+    <div className="glass-panel-strong mb-6 p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-white">
           Workout sections{' '}
@@ -92,7 +92,7 @@ export function DayManager({
           value={tabSearch}
           onChange={(e) => setTabSearch(e.target.value)}
           placeholder="Filter sections…"
-          className="mb-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-600"
+          className="input-field mb-3 w-full py-2.5 text-sm"
         />
       )}
 
@@ -113,12 +113,12 @@ export function DayManager({
               ref={isActive ? activeTabRef : undefined}
               type="button"
               onClick={() => onSelectDay(d.id, d.name)}
-              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`section-tab ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
+                  ? 'section-tab-active'
                   : isEmpty
-                    ? 'border border-amber-800/40 bg-amber-950/20 text-amber-200/90 hover:bg-amber-950/40'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    ? 'border border-amber-700/50 bg-amber-950/30 text-amber-200 hover:bg-amber-950/50'
+                    : 'section-tab-idle'
               }`}
             >
               {d.name}
@@ -141,7 +141,7 @@ export function DayManager({
               if (n) void Promise.resolve(onAddDay(n)).then(() => setNewDayName(''))
             }
           }}
-          className="min-w-[140px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+          className="input-field min-w-[140px] flex-1 py-2.5 text-sm"
         />
         <button
           type="button"
@@ -153,7 +153,7 @@ export function DayManager({
             }
             void Promise.resolve(onAddDay(n)).then(() => setNewDayName(''))
           }}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          className="btn-primary shrink-0"
         >
           + Add section
         </button>
@@ -171,7 +171,7 @@ export function DayManager({
                   if (n) void Promise.resolve(onRenameDay(activeDayId, n)).then(() => setRenaming(false))
                 }
               }}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+              className="input-field py-2.5 text-sm"
             />
             <button
               type="button"
@@ -180,7 +180,7 @@ export function DayManager({
                 if (n) void Promise.resolve(onRenameDay(activeDayId, n)).then(() => setRenaming(false))
                 else setRenaming(false)
               }}
-              className="rounded-lg bg-slate-700 px-3 py-2 text-sm text-white"
+              className="btn-secondary"
             >
               Save name
             </button>
@@ -200,7 +200,7 @@ export function DayManager({
                 setRenameValue(activeDayName)
                 setRenaming(true)
               }}
-              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
+              className="btn-secondary"
             >
               Rename “{activeDayName}”
             </button>
@@ -217,7 +217,7 @@ export function DayManager({
                   void onDeleteDay(activeDayId)
                 }
               }}
-              className="rounded-lg border border-red-900/50 px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 disabled:opacity-40"
+              className="btn-secondary border-red-800/60 text-red-400 hover:border-red-700/60 hover:bg-red-950/40 disabled:opacity-40"
             >
               Delete section
             </button>

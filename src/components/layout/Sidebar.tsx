@@ -61,17 +61,18 @@ export function Sidebar({
       <button
         type="button"
         onClick={onToggle}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-xl shadow-lg shadow-emerald-900/40 transition hover:bg-emerald-500"
+        className="fab-settings"
         aria-label={open ? 'Close panel' : 'Open panel'}
       >
         {open ? '✕' : '⚙'}
       </button>
 
       <aside
-        className={`fixed right-0 top-0 z-30 flex h-full w-[min(100%,320px)] flex-col border-l border-slate-800 bg-slate-900 shadow-2xl transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed right-0 top-0 z-30 flex h-full w-[min(360px,92vw)] flex-col border-l border-slate-700/60 bg-slate-900/95 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="border-b border-slate-800 p-5">
-          <h2 className="font-semibold text-white">Control panel</h2>
+        <div className="border-b border-slate-800/80 bg-slate-950/50 px-5 py-4">
+          <h2 className="text-base font-bold text-white">Control panel</h2>
           <p className="mt-1 text-xs text-slate-400">{currentDay} · {exerciseCount} exercises</p>
         </div>
 
@@ -80,7 +81,7 @@ export function Sidebar({
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
               Timer
             </h3>
-            <div className="rounded-xl bg-slate-950 p-4 text-sm">
+            <div className="rounded-xl border border-slate-800/80 bg-slate-950/80 p-4 text-sm">
               <div className="flex justify-between text-slate-300">
                 <span>Workout</span>
                 <span className="font-mono font-medium text-white">{workoutTime}</span>
@@ -177,7 +178,7 @@ export function Sidebar({
       {open && (
         <button
           type="button"
-          className="fixed inset-0 z-20 bg-black/50"
+          className="fixed inset-0 z-20 bg-slate-950/70 backdrop-blur-sm transition-opacity"
           onClick={onToggle}
           aria-label="Close overlay"
         />

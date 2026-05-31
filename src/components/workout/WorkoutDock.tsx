@@ -33,17 +33,10 @@ export function WorkoutDock({
 
   return (
     <div className="workout-dock lg:hidden">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
-          <svg className="h-11 w-11 -rotate-90" viewBox="0 0 44 44" aria-hidden>
-            <circle
-              cx="22"
-              cy="22"
-              r="18"
-              fill="none"
-              className="stroke-slate-800"
-              strokeWidth="4"
-            />
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+          <svg className="h-12 w-12 -rotate-90" viewBox="0 0 44 44" aria-hidden>
+            <circle cx="22" cy="22" r="18" fill="none" className="stroke-slate-800" strokeWidth="4" />
             <circle
               cx="22"
               cy="22"
@@ -56,8 +49,8 @@ export function WorkoutDock({
               strokeDashoffset={offset}
             />
           </svg>
-          <span className="absolute text-[10px] font-bold text-white">
-            {savedCount}/{totalExercises}
+          <span className="absolute text-[10px] font-bold tabular-nums text-white">
+            {pct}%
           </span>
         </div>
 
@@ -66,8 +59,10 @@ export function WorkoutDock({
             {meta.emoji} {sectionName}
           </p>
           <p className="text-xs text-slate-500">
+            {savedCount}/{totalExercises} saved
+            <span className="mx-1.5 text-slate-700">·</span>
             {isResting ? (
-              <span className="text-amber-400">Rest {restTime}</span>
+              <span className="font-medium text-amber-400">Rest {restTime}</span>
             ) : (
               <>Workout {workoutTime}</>
             )}
@@ -78,7 +73,7 @@ export function WorkoutDock({
           <button
             type="button"
             onClick={onOpenAnalytics}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-2.5 py-2 text-xs text-slate-300"
+            className="tap-target rounded-xl border border-slate-600/80 bg-slate-800/80 px-3 text-sm"
             aria-label="Analytics"
           >
             📊
@@ -86,7 +81,7 @@ export function WorkoutDock({
           <button
             type="button"
             onClick={onAddExercise}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-2.5 py-2 text-xs text-slate-300"
+            className="tap-target rounded-xl border border-slate-600/80 bg-slate-800/80 px-3 text-lg leading-none"
             aria-label="Add exercise"
           >
             +
@@ -94,9 +89,9 @@ export function WorkoutDock({
           <button
             type="button"
             onClick={onFinish}
-            className={`rounded-xl px-3 py-2 text-xs font-semibold text-white ${
+            className={`tap-target rounded-xl px-3.5 text-xs font-bold text-white ${
               complete
-                ? 'bg-emerald-500 shadow-lg shadow-emerald-900/50'
+                ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-950/40'
                 : 'bg-emerald-700 hover:bg-emerald-600'
             }`}
           >

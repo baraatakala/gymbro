@@ -32,51 +32,61 @@ export function StatusStrip({
       ? Math.round((savedTodayCount / totalPlanExercises) * 100)
       : 0
 
+  const connected = dataLabel.toLowerCase().includes('cloud sync')
+
   return (
-    <div className="glass-panel mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-xs sm:text-sm">
-      <span className="inline-flex items-center gap-1.5 text-slate-400">
-        <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-        <strong className="text-emerald-400">{dataLabel}</strong>
-      </span>
-      {libraryExercises > 0 && (
-        <span className="text-slate-500">
-          Library · {libraryExercises} ex · {libraryMuscles} groups
+    <div className="glass-panel mb-5 overflow-hidden p-0 sm:mb-6">
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2 sm:py-3.5">
+        <span className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+          <span
+            className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-500'}`}
+          />
+          {dataLabel}
         </span>
-      )}
-      {sectionCount > 0 && activeSection && (
-        <span className="text-slate-500">
-          {sectionCount} sections · <span className="text-slate-300">{activeExerciseCount}</span>{' '}
-          on <span className="text-white">{activeSection}</span>
-        </span>
-      )}
-      {totalPlanExercises > 0 && savedTodayCount > 0 && (
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
-          Today {savedTodayCount}/{totalPlanExercises}
-          {progressPct >= 100 ? ' ✓' : ` · ${progressPct}%`}
-        </span>
-      )}
-      {emptySections > 0 && (
-        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-400">
-          {emptySections} empty
-        </span>
-      )}
-      <span className="ml-auto flex flex-wrap items-center gap-2">
-        {trainingStreak > 0 && (
-          <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-emerald-400">
-            {trainingStreak}-day streak
-          </span>
-        )}
-        {trainingDays > 0 && (
-          <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-slate-300">
-            {trainingDays} training day{trainingDays !== 1 ? 's' : ''}
-          </span>
-        )}
-        {prCount > 0 && (
-          <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-medium text-emerald-400">
-            {prCount} PR{prCount !== 1 ? 's' : ''}
-          </span>
-        )}
-      </span>
+
+        <div className="flex flex-wrap gap-2 text-xs text-slate-500 sm:text-sm">
+          {libraryExercises > 0 && (
+            <span className="chip border-slate-700/80 bg-slate-800/50 text-slate-400">
+              {libraryExercises} exercises · {libraryMuscles} groups
+            </span>
+          )}
+          {sectionCount > 0 && activeSection && (
+            <span className="chip border-slate-700/80 bg-slate-800/50 text-slate-400">
+              <span className="text-slate-200">{activeExerciseCount}</span> on{' '}
+              <span className="font-medium text-white">{activeSection}</span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          {totalPlanExercises > 0 && savedTodayCount > 0 && (
+            <span className="chip border-emerald-500/35 bg-emerald-500/15 text-emerald-300">
+              Today {savedTodayCount}/{totalPlanExercises}
+              {progressPct >= 100 ? ' ✓' : ` · ${progressPct}%`}
+            </span>
+          )}
+          {trainingStreak > 0 && (
+            <span className="chip border-amber-500/30 bg-amber-500/10 text-amber-300">
+              🔥 {trainingStreak}-day streak
+            </span>
+          )}
+          {emptySections > 0 && (
+            <span className="chip border-amber-600/40 bg-amber-950/40 text-amber-400">
+              {emptySections} empty
+            </span>
+          )}
+          {prCount > 0 && (
+            <span className="chip border-emerald-500/25 bg-slate-800/60 text-emerald-400">
+              {prCount} PR{prCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {trainingDays > 0 && (
+            <span className="chip border-slate-600/60 bg-slate-800/40 text-slate-400">
+              {trainingDays} day{trainingDays !== 1 ? 's' : ''} logged
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

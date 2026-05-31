@@ -25,9 +25,9 @@ export function SetupBanner({
     error?.toLowerCase().includes('anonymous sign-ins are disabled')
 
   return (
-    <div className="mb-6 rounded-2xl border border-emerald-800/40 bg-gradient-to-br from-emerald-950/40 to-slate-950 p-6">
-      <h2 className="text-lg font-bold text-white">Set up your program</h2>
-      <p className="mt-2 text-sm text-slate-400">
+    <div className="glass-panel-strong mb-6 overflow-hidden border-emerald-500/25 bg-gradient-to-br from-emerald-950/50 via-slate-900/30 to-slate-950/80 p-6 sm:p-8">
+      <h2 className="text-xl font-bold text-white sm:text-2xl">Set up your program</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
         Load 14 workout sections (Chest, Back, Push, Pull, …) with exercises from the Supabase
         library
         {libraryExercises > 0
@@ -37,7 +37,7 @@ export function SetupBanner({
       </p>
 
       {anonymousDisabled && (
-        <div className="mt-4 rounded-lg border border-amber-700/50 bg-amber-950/30 p-4 text-sm text-amber-100">
+        <div className="mt-5 rounded-xl border border-amber-600/40 bg-amber-950/40 p-4 text-sm text-amber-100">
           <p className="font-semibold text-amber-300">Anonymous sign-ins are off (422 error)</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-amber-100/90">
             <li>Open Supabase → Authentication → Providers</li>
@@ -49,7 +49,7 @@ export function SetupBanner({
               href={authUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-block rounded-lg bg-amber-700/40 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-700/60"
+              className="btn-secondary mt-4 inline-flex border-amber-700/50 text-amber-100"
             >
               Open Anonymous provider settings →
             </a>
@@ -58,30 +58,22 @@ export function SetupBanner({
       )}
 
       {error && !anonymousDisabled && (
-        <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-300">
+        <div className="mt-5 rounded-xl border border-red-500/30 bg-red-950/40 p-4 text-sm text-red-200">
           {error}
         </div>
       )}
 
-      {error && anonymousDisabled && (
-        <p className="mt-3 text-xs text-slate-500">{error}</p>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <button
           type="button"
           disabled={loading || anonymousDisabled}
           onClick={onInitialize}
-          className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+          className="btn-primary w-full sm:w-auto sm:px-8"
           title={anonymousDisabled ? 'Enable Anonymous auth first' : undefined}
         >
           {loading ? 'Setting up…' : 'Initialize 14 sections'}
         </button>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
-        >
+        <button type="button" onClick={onRetry} className="btn-secondary w-full sm:w-auto">
           Retry connection
         </button>
       </div>

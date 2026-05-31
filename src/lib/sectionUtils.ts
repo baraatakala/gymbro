@@ -24,7 +24,8 @@ export function getSectionMeta(sectionName: string): SectionMeta {
       kind: 'cardio',
       label: 'Cardio',
       emoji: '💨',
-      accentClass: 'text-cyan-400 border-cyan-500/30 bg-cyan-950/30',
+      accentClass:
+        'border-cyan-500/35 bg-gradient-to-br from-cyan-950/80 via-slate-900/40 to-slate-950/60 text-cyan-300 shadow-lg shadow-cyan-950/20',
       ringClass: 'stroke-cyan-500',
     }
   }
@@ -33,7 +34,8 @@ export function getSectionMeta(sectionName: string): SectionMeta {
       kind: 'fullbody',
       label: 'Full body',
       emoji: '🔥',
-      accentClass: 'text-violet-400 border-violet-500/30 bg-violet-950/30',
+      accentClass:
+        'border-violet-500/35 bg-gradient-to-br from-violet-950/80 via-slate-900/40 to-slate-950/60 text-violet-300 shadow-lg shadow-violet-950/20',
       ringClass: 'stroke-violet-500',
     }
   }
@@ -42,7 +44,8 @@ export function getSectionMeta(sectionName: string): SectionMeta {
       kind: 'hybrid',
       label: 'Split',
       emoji: '⚡',
-      accentClass: 'text-amber-400 border-amber-500/30 bg-amber-950/30',
+      accentClass:
+        'border-amber-500/35 bg-gradient-to-br from-amber-950/70 via-slate-900/40 to-slate-950/60 text-amber-300 shadow-lg shadow-amber-950/20',
       ringClass: 'stroke-amber-500',
     }
   }
@@ -50,7 +53,8 @@ export function getSectionMeta(sectionName: string): SectionMeta {
     kind: 'strength',
     label: 'Strength',
     emoji: '🏋️',
-    accentClass: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/30',
+    accentClass:
+      'border-emerald-500/35 bg-gradient-to-br from-emerald-950/80 via-slate-900/40 to-slate-950/60 text-emerald-300 shadow-lg shadow-emerald-950/25',
     ringClass: 'stroke-emerald-500',
   }
 }
