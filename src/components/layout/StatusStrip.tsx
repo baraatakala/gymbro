@@ -11,6 +11,7 @@ interface StatusStripProps {
   trainingStreak?: number
   savedTodayCount?: number
   totalPlanExercises?: number
+  onOpenHabits?: () => void
 }
 
 export function StatusStrip({
@@ -26,6 +27,7 @@ export function StatusStrip({
   trainingStreak = 0,
   savedTodayCount = 0,
   totalPlanExercises = 0,
+  onOpenHabits,
 }: StatusStripProps) {
   const progressPct =
     totalPlanExercises > 0
@@ -84,6 +86,15 @@ export function StatusStrip({
             <span className="chip border-slate-600/60 bg-slate-800/40 text-slate-400">
               {trainingDays} day{trainingDays !== 1 ? 's' : ''} logged
             </span>
+          )}
+          {onOpenHabits && (
+            <button
+              type="button"
+              onClick={onOpenHabits}
+              className="chip border-cyan-600/40 bg-cyan-950/40 text-cyan-300 transition hover:bg-cyan-900/50"
+            >
+              📊 Habits
+            </button>
           )}
         </div>
       </div>

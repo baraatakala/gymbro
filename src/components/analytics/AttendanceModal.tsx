@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Modal } from '../ui/Modal'
 import {
   buildAttendanceReport,
   defaultDateRange,
+  normalizeDateRange,
   toIsoDate,
 } from '../../lib/attendanceAnalytics'
 import { getWeeklyTargetDays, setWeeklyTargetDays } from '../../lib/attendancePrefs'
@@ -18,6 +19,7 @@ interface AttendanceModalProps {
 }
 
 type Preset = '30' | '90' | '180' | '365' | 'custom'
+type SectionSort = 'visits' | 'time' | 'name'
 
 export function AttendanceModal({
   open,
@@ -32,34 +34,29 @@ export function AttendanceModal({
   const [range, setRange] = useState(defaultDateRange)
   const [preset, setPreset] = useState<Preset>('90')
   const [weeklyTarget, setWeeklyTarget] = useState(getWeeklyTargetDays())
+  const [sectionFilter, setSectionFilter] = useState('')
+  const [sectionSort, setSectionSort] = useState<SectionSort>('visits')
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await loadAttendanceDataset(400)
+      setTrainedDates(data.trainedDates.length > 0 ? data.trainedDates : trainingCalendarDates)
+      setSessions(data.sessions)
+    } catch (e) {
+      setSessions([])
+      setError(e instanceof Error ? e.message : 'Could not load attendance data')
+    } finally {
+      setLoading(false)
+    }
+  }, [trainingCalendarDates])
 
   useEffect(() => {
     if (!open) return
     setWeeklyTarget(getWeeklyTargetDays())
-    let cancelled = false
-    void (async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const data = await loadAttendanceDataset(400)
-        if (!cancelled) {
-          setTrainedDates(
-            data.trainedDates.length > 0 ? data.trainedDates : trainingCalendarDates,
-          )
-          setSessions(data.sessions)
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Could not load attendance data')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [open, trainingCalendarDates])
+    void loadData()
+  }, [open, loadData])
 
   const applyPreset = (p: Preset) => {
     setPreset(p)
@@ -71,24 +68,42 @@ export function AttendanceModal({
     setRange({ from: toIsoDate(from), to: toIsoDate(to) })
   }
 
+  const effectiveRange = useMemo(() => normalizeDateRange(range), [range])
+
   const report: AttendanceReport | null = useMemo(() => {
     if (!open || loading) return null
-    return buildAttendanceReport(trainedDates, sessions, range, {
+    return buildAttendanceReport(trainedDates, sessions, effectiveRange, {
       weeklyTargetDays: weeklyTarget,
       planSections,
     })
-  }, [open, loading, trainedDates, sessions, range, weeklyTarget, planSections])
+  }, [open, loading, trainedDates, sessions, effectiveRange, weeklyTarget, planSections])
+
+  const filteredSections = useMemo(() => {
+    if (!report) return []
+    const q = sectionFilter.trim().toLowerCase()
+    let list = report.sectionVisitCounts
+    if (q) list = list.filter((s) => s.section.toLowerCase().includes(q))
+    if (sectionSort === 'name') {
+      return [...list].sort((a, b) => a.section.localeCompare(b.section))
+    }
+    if (sectionSort === 'time') {
+      return [...list].sort((a, b) => b.avgMinutes - a.avgMinutes)
+    }
+    return list
+  }, [report, sectionFilter, sectionSort])
 
   const saveTarget = (n: number) => {
     setWeeklyTargetDays(n)
     setWeeklyTarget(n)
   }
 
+  const todayIso = toIsoDate(new Date())
+
   return (
     <Modal open={open} onClose={onClose} title="Training habits & attendance" wide>
       <p className="mb-4 text-sm text-slate-400">
-        Answers from your cloud calendar, session times, and set timestamps. Check-in starts when
-        you open a section or save your first set; check-out when you tap Finish workout.
+        Gym visits, duration, streaks, and rest patterns from your calendar and logged sets.
+        Check-in when you open a section; check-out on <strong className="text-slate-300">Finish workout</strong>.
       </p>
 
       <div className="mb-5 flex flex-wrap gap-2">
@@ -111,6 +126,14 @@ export function AttendanceModal({
             {label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => void loadData()}
+          disabled={loading}
+          className="btn-ghost ml-auto py-1.5 text-xs disabled:opacity-50"
+        >
+          {loading ? 'Refreshing…' : '↻ Refresh'}
+        </button>
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2">
@@ -118,6 +141,7 @@ export function AttendanceModal({
           From
           <input
             type="date"
+            max={range.to || todayIso}
             value={range.from}
             onChange={(e) => {
               setPreset('custom')
@@ -130,6 +154,8 @@ export function AttendanceModal({
           To
           <input
             type="date"
+            min={range.from}
+            max={todayIso}
             value={range.to}
             onChange={(e) => {
               setPreset('custom')
@@ -146,6 +172,7 @@ export function AttendanceModal({
           value={weeklyTarget}
           onChange={(e) => saveTarget(parseInt(e.target.value, 10))}
           className="input-field py-2 text-sm"
+          aria-label="Weekly gym target"
         >
           {[2, 3, 4, 5, 6, 7].map((n) => (
             <option key={n} value={n}>
@@ -156,19 +183,38 @@ export function AttendanceModal({
       </label>
 
       {loading && (
-        <div className="flex justify-center py-16">
+        <div className="flex flex-col items-center justify-center gap-3 py-16">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p className="text-sm text-slate-500">Loading attendance data…</p>
         </div>
       )}
 
-      {error && (
-        <p className="rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-200">
-          {error}
-        </p>
+      {error && !loading && (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3">
+          <p className="text-sm text-red-200">{error}</p>
+          <button type="button" onClick={() => void loadData()} className="btn-secondary mt-3 text-xs">
+            Retry
+          </button>
+        </div>
       )}
 
-      {report && !loading && (
+      {report && !loading && !error && report.gymVisits === 0 && (
+        <div className="mb-6 rounded-xl border border-dashed border-slate-700 px-6 py-10 text-center text-sm text-slate-500">
+          <p className="text-3xl">📅</p>
+          <p className="mt-3 text-slate-300">No gym days in this range yet.</p>
+          <p className="mt-2">Save exercises and use Finish workout — stats appear after your first logged day.</p>
+        </div>
+      )}
+
+      {report && !loading && !error && (
         <div className="space-y-8">
+          <p className="text-xs text-slate-600">
+            Showing {report.range.from} → {report.range.to}
+            {range.from !== report.range.from || range.to !== report.range.to
+              ? ' (adjusted)'
+              : ''}
+          </p>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard label="Gym visits" value={String(report.gymVisits)} sub={`${report.gymVisitsPerWeek}/wk`} />
             <MetricCard
@@ -228,14 +274,33 @@ export function AttendanceModal({
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-slate-300">
-              Section frequency (how often you train each day)
-            </h3>
-            {report.sectionVisitCounts.length === 0 ? (
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-sm font-semibold text-slate-300">Section frequency</h3>
+              <div className="flex gap-2">
+                <input
+                  type="search"
+                  value={sectionFilter}
+                  onChange={(e) => setSectionFilter(e.target.value)}
+                  placeholder="Filter…"
+                  className="input-field w-full py-1.5 text-xs sm:w-36"
+                />
+                <select
+                  value={sectionSort}
+                  onChange={(e) => setSectionSort(e.target.value as SectionSort)}
+                  className="input-field py-1.5 text-xs"
+                  aria-label="Sort sections"
+                >
+                  <option value="visits">Most visits</option>
+                  <option value="time">Longest avg</option>
+                  <option value="name">A–Z</option>
+                </select>
+              </div>
+            </div>
+            {filteredSections.length === 0 ? (
               <p className="text-sm text-slate-500">No section logs in this range.</p>
             ) : (
               <ul className="space-y-2">
-                {report.sectionVisitCounts.map((s) => (
+                {filteredSections.map((s) => (
                   <li
                     key={s.section}
                     className="flex justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-2.5 text-sm"

@@ -69,13 +69,17 @@ export async function touchSessionCheckIn(section: string): Promise<void> {
   }
 }
 
-export async function fetchAttendanceSessions(): Promise<AttendanceSession[]> {
+export async function fetchAttendanceSessions(lookbackDays = 400): Promise<AttendanceSession[]> {
   if (!supabase || !isSupabaseConfigured) {
     return buildAttendanceFromLocal()
   }
 
   const auth = await tryEnsureSupabaseUser()
   if (!auth.ok) return buildAttendanceFromLocal()
+
+  const since = new Date()
+  since.setDate(since.getDate() - lookbackDays)
+  const sinceTs = since.getTime()
 
   const selectWithTiming = `
       id,
@@ -91,8 +95,9 @@ export async function fetchAttendanceSessions(): Promise<AttendanceSession[]> {
     .from('workout_sessions')
     .select(selectWithTiming)
     .eq('user_id', auth.userId)
+    .gte('timestamp', sinceTs)
     .order('timestamp', { ascending: false })
-    .limit(500)
+    .limit(800)
 
   if (error?.message?.includes('started_at') || error?.message?.includes('logged_at')) {
     const fallback = await supabase
@@ -106,8 +111,9 @@ export async function fetchAttendanceSessions(): Promise<AttendanceSession[]> {
       `,
       )
       .eq('user_id', auth.userId)
+      .gte('timestamp', sinceTs)
       .order('timestamp', { ascending: false })
-      .limit(500)
+      .limit(800)
 
     if (fallback.error) throw fallback.error
     data = (fallback.data ?? []).map((row) => {
@@ -135,7 +141,9 @@ export async function fetchAttendanceSessions(): Promise<AttendanceSession[]> {
     throw error
   }
 
-  return (data ?? []).map((row) => mapRow(row as RawRow))
+  return (data ?? [])
+    .map((row) => mapRow(row as RawRow))
+    .filter((s) => s.sets.length > 0)
 }
 
 function buildAttendanceFromLocal(): AttendanceSession[] {
@@ -178,7 +186,7 @@ export async function loadAttendanceDataset(lookbackDays = 365): Promise<{
 }> {
   const [trainedDates, sessions] = await Promise.all([
     fetchTrainingCalendarDates(lookbackDays),
-    fetchAttendanceSessions(),
+    fetchAttendanceSessions(lookbackDays),
   ])
   return { trainedDates, sessions }
 }

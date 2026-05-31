@@ -21,7 +21,18 @@ Open **Sidebar → Training habits & attendance** (global, all sections).
 - **Check-in:** switching section or saving first set → `recordLocalCheckIn` + `touchSessionCheckIn` → `started_at`
 - **Check-out:** **Finish workout** → `finished_at`, `status: completed`
 
-Apply migration `20260531120000_session_timing_attendance.sql` in Supabase SQL editor if columns are missing.
+Apply migrations in Supabase SQL editor if not applied:
+
+- `20260531120000_session_timing_attendance.sql` — `started_at`, `finished_at`, `status`
+- `20260531130000_attendance_performance_indexes.sql` — indexes for calendar + attendance queries
+
+## Verification
+
+```bash
+npm run verify:attendance
+npm run audit:analytics
+npm run audit:supabase
+```
 
 ## Weekly target
 

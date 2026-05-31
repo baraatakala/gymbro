@@ -311,6 +311,7 @@ export default function App() {
         trainingStreak={trainingStreak}
         savedTodayCount={savedCount}
         totalPlanExercises={planExercises.length}
+        onOpenHabits={() => setAttendanceOpen(true)}
       />
 
       {hasPlan &&
@@ -816,6 +817,10 @@ export default function App() {
         onExport={handleExport}
         exporting={exporting}
         trainingCalendarDates={workout.trainingCalendarDates}
+        onOpenHabits={() => {
+          setAnalyticsOpen(false)
+          setAttendanceOpen(true)
+        }}
       />
 
       <ExerciseLibraryModal

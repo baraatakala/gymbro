@@ -16,9 +16,33 @@ export function toIsoDate(d: Date): string {
   return d.toLocaleDateString('en-CA')
 }
 
+const MAX_RANGE_DAYS = 730
+
+/** Clamp invalid ranges; swap from/to if reversed. */
+export function normalizeDateRange(range: DateRange): DateRange {
+  let from = range.from?.trim() ?? ''
+  let to = range.to?.trim() ?? ''
+  if (!from || !to) {
+    return defaultDateRange()
+  }
+  if (from > to) {
+    ;[from, to] = [to, from]
+  }
+  const fromD = new Date(`${from}T12:00:00`)
+  const toD = new Date(`${to}T12:00:00`)
+  const spanDays = (toD.getTime() - fromD.getTime()) / 86400000
+  if (spanDays > MAX_RANGE_DAYS) {
+    const clampedFrom = new Date(toD)
+    clampedFrom.setDate(clampedFrom.getDate() - MAX_RANGE_DAYS)
+    from = toIsoDate(clampedFrom)
+  }
+  return { from, to }
+}
+
 export function parseRange(range: DateRange): { fromMs: number; toMs: number } {
-  const fromMs = new Date(`${range.from}T00:00:00`).getTime()
-  const toMs = new Date(`${range.to}T23:59:59.999`).getTime()
+  const normalized = normalizeDateRange(range)
+  const fromMs = new Date(`${normalized.from}T00:00:00`).getTime()
+  const toMs = new Date(`${normalized.to}T23:59:59.999`).getTime()
   return { fromMs, toMs }
 }
 
@@ -195,9 +219,10 @@ export function buildAttendanceReport(
     planSections: string[]
   },
 ): AttendanceReport {
-  const { fromMs, toMs } = parseRange(range)
-  const gymDays = collectGymDayKeys(trainedDates, sessions, range)
-  const byDay = groupSessionsByGymDay(sessions, range)
+  const normalizedRange = normalizeDateRange(range)
+  const { fromMs, toMs } = parseRange(normalizedRange)
+  const gymDays = collectGymDayKeys(trainedDates, sessions, normalizedRange)
+  const byDay = groupSessionsByGymDay(sessions, normalizedRange)
   const streak = computeTrainingStreak(
     trainedDates.length > 0 ? trainedDates : gymDays,
   )
@@ -282,8 +307,8 @@ export function buildAttendanceReport(
     .sort((a, b) => b.totalMinutes - a.totalMinutes)
 
   const rangeDays =
-    (new Date(`${range.to}T12:00:00`).getTime() -
-      new Date(`${range.from}T12:00:00`).getTime()) /
+    (new Date(`${normalizedRange.to}T12:00:00`).getTime() -
+      new Date(`${normalizedRange.from}T12:00:00`).getTime()) /
       86400000 +
     1
   const weeks = Math.max(1, rangeDays / 7)
@@ -291,7 +316,7 @@ export function buildAttendanceReport(
   const setRest = inferRestFromSets(
     sessions.filter((s) => {
       const k = calendarDayKey(s.timestamp)
-      return inRange(k, range)
+      return inRange(k, normalizedRange)
     }),
   )
   const localRest = getRestEventsInRange(fromMs, toMs)
@@ -340,7 +365,7 @@ export function buildAttendanceReport(
     tone: streak.current >= 3 ? 'positive' : 'neutral',
   })
 
-  const hitPct = weeklyTargetHitRate(gymDays, range, options.weeklyTargetDays)
+  const hitPct = weeklyTargetHitRate(gymDays, normalizedRange, options.weeklyTargetDays)
   insights.push({
     icon: '🎯',
     title: 'Weekly goal',
@@ -387,7 +412,7 @@ export function buildAttendanceReport(
   }
 
   return {
-    range,
+    range: normalizedRange,
     gymVisits: gymDays.length,
     gymVisitsPerWeek: Number((gymDays.length / weeks).toFixed(1)),
     avgSessionMinutes:

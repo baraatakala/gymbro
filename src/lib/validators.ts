@@ -3,6 +3,7 @@ import type { SetEntry } from '../types/workout'
 const MAX_SECTION_NAME = 48
 const MAX_EXERCISE_NAME = 120
 const MAX_WEIGHT_KG = 600
+const MAX_CARDIO_MINUTES = 180
 const MAX_REPS = 100
 
 export function validateSectionName(name: string): string {
@@ -32,8 +33,9 @@ export function validateSetEntries(
 
   if (!sets.length) throw new Error(`Add at least one set for ${label}`)
 
+  const maxWeight = cardio ? MAX_CARDIO_MINUTES : MAX_WEIGHT_KG
   const parsed = sets.map((s, i) => ({
-    weight: Math.min(MAX_WEIGHT_KG, Math.max(0, Number(s.weight) || 0)),
+    weight: Math.min(maxWeight, Math.max(0, Number(s.weight) || 0)),
     reps: Math.min(MAX_REPS, Math.max(1, Math.round(Number(s.reps) || 1))),
     index: i,
   }))

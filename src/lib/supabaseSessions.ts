@@ -621,11 +621,21 @@ function collapseTodaySessions(sessions: WorkoutSession[]): WorkoutSession[] {
 async function recordTrainingDay(userId: string, at: Date = new Date()): Promise<void> {
   if (!supabase) return
   const trainedOn = at.toISOString().slice(0, 10)
+
+  const { data: existing } = await supabase
+    .from('training_days')
+    .select('sessions_count')
+    .eq('user_id', userId)
+    .eq('trained_on', trainedOn)
+    .maybeSingle()
+
+  const nextCount = (existing?.sessions_count ?? 0) + 1
+
   const { error } = await supabase.from('training_days').upsert(
     {
       user_id: userId,
       trained_on: trainedOn,
-      sessions_count: 1,
+      sessions_count: nextCount,
     },
     { onConflict: 'user_id,trained_on' },
   )
@@ -782,7 +792,7 @@ export async function saveExerciseToSupabase(
 
     const totalVolume = await recalcSessionVolume(sessionId)
 
-    const checkInPatch = getLocalCheckIn(day)
+    const checkInAt = getLocalCheckIn(day)
     const { error: updateError } = await supabase
       .from('workout_sessions')
       .update({
@@ -792,11 +802,18 @@ export async function saveExerciseToSupabase(
         finished_at: now.toISOString(),
         status: 'in_progress',
         total_volume_kg: totalVolume,
-        ...(checkInPatch ? { started_at: checkInPatch } : {}),
       })
       .eq('id', sessionId)
 
     if (updateError) throw updateError
+
+    if (checkInAt) {
+      await supabase
+        .from('workout_sessions')
+        .update({ started_at: checkInAt })
+        .eq('id', sessionId)
+        .is('started_at', null)
+    }
   } else {
     storageKey = `${day}_${timestamp}`
     const checkInAt = getLocalCheckIn(day) ?? now.toISOString()
@@ -1002,6 +1019,8 @@ export async function finishWorkoutForDay(day: string): Promise<boolean> {
 
   if (todayIds.length === 0) return false
 
+  const checkInAt = getLocalCheckIn(day)
+
   const { data: updated, error } = await supabase
     .from('workout_sessions')
     .update({ status: 'completed', finished_at: nowIso })
@@ -1010,6 +1029,14 @@ export async function finishWorkoutForDay(day: string): Promise<boolean> {
 
   if (error) throw error
   if (!updated?.length) return false
+
+  if (checkInAt) {
+    await supabase
+      .from('workout_sessions')
+      .update({ started_at: checkInAt })
+      .in('id', todayIds)
+      .is('started_at', null)
+  }
 
   return true
 }
