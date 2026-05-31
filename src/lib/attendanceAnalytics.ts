@@ -68,6 +68,19 @@ export function collectGymDayKeys(
   return [...keys].sort()
 }
 
+/** All gym days from calendar + sessions (no range filter) — streaks & heatmap. */
+export function allTrainingDayKeys(
+  trainedDates: string[],
+  sessions: AttendanceSession[],
+): string[] {
+  const keys = new Set<string>()
+  for (const d of trainedDates) keys.add(d)
+  for (const s of sessions) {
+    if (s.sets.length > 0) keys.add(calendarDayKey(s.timestamp))
+  }
+  return [...keys].sort()
+}
+
 function groupSessionsByGymDay(
   sessions: AttendanceSession[],
   range: DateRange,
@@ -248,9 +261,7 @@ export function buildAttendanceReport(
   const { fromMs, toMs } = parseRange(normalizedRange)
   const gymDays = collectGymDayKeys(trainedDates, sessions, normalizedRange)
   const byDay = groupSessionsByGymDay(sessions, normalizedRange)
-  const streak = computeTrainingStreak(
-    trainedDates.length > 0 ? trainedDates : gymDays,
-  )
+  const streak = computeTrainingStreak(allTrainingDayKeys(trainedDates, sessions))
 
   const durations: number[] = []
   const checkInGaps: number[] = []
@@ -453,10 +464,15 @@ export function buildAttendanceReport(
   const topSectionByTime = sectionTimeMinutes[0]?.section ?? null
 
   if (topSectionByTime && sectionTimeMinutes[0].totalMinutes > 0) {
+    const visitStats = sectionVisitCounts.find((s) => s.section === topSectionByTime)
+    const avgMin = visitStats?.avgMinutes ?? 0
     insights.push({
       icon: '🏋️',
       title: 'Most time per visit',
-      message: `${topSectionByTime} — ~${sectionVisitCounts.find((s) => s.section === topSectionByTime)?.avgMinutes ?? sectionTimeMinutes[0].totalMinutes} min average.`,
+      message:
+        avgMin > 0
+          ? `${topSectionByTime} — ~${avgMin} min average per gym day.`
+          : `${topSectionByTime} — logged in range.`,
       tone: 'neutral',
     })
   }

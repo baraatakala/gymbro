@@ -94,6 +94,11 @@ export function ProgressModal({
     [mergedRecords, sectionExerciseNames],
   )
 
+  const heaviestRecord = useMemo(
+    () => sortPersonalRecords(sectionRecords, 'weight')[0],
+    [sectionRecords],
+  )
+
   const records = useMemo(() => {
     const sorted = sortPersonalRecords(sectionRecords, recordSort)
     const q = recordFilter.trim().toLowerCase()
@@ -517,8 +522,8 @@ export function ProgressModal({
                         <StatCard
                           label={cardio ? 'Longest' : 'Heaviest single'}
                           value={
-                            records[0]
-                              ? formatRecordWeight(records[0].weight, records[0].set)
+                            heaviestRecord
+                              ? formatRecordWeight(heaviestRecord.weight, heaviestRecord.set)
                               : '—'
                           }
                         />

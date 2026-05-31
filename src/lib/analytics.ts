@@ -1,5 +1,9 @@
 import { calendarDayKey } from './dateUtils'
-import { mergeSessionsForPrefill, sessionHasMeaningfulData } from './sessionMerge'
+import {
+  collapseSessionsByDay,
+  mergeSessionsForPrefill,
+  sessionHasMeaningfulData,
+} from './sessionMerge'
 
 export type TrendMetric = 'avg' | 'max' | 'volume'
 export type RecordSortKey = 'weight' | 'date' | 'name'
@@ -96,6 +100,9 @@ export function calculateDayStats(
   sessions: WorkoutSession[],
   options?: { cardio?: boolean },
 ): DayStats {
+  const collapsed = collapseSessionsByDay(sessions)
+  sessions = collapsed
+
   if (sessions.length === 0) {
     return {
       totalSessions: 0,
@@ -189,6 +196,7 @@ export function calculatePersonalRecords(sessions: WorkoutSession[]): PersonalRe
     if (session.exerciseSets) {
       for (const [exercise, entries] of Object.entries(session.exerciseSets)) {
         for (const entry of entries) {
+          if (entry.weight <= 0) continue
           const current = map.get(exercise)
           if (
             !current ||
@@ -209,6 +217,7 @@ export function calculatePersonalRecords(sessions: WorkoutSession[]): PersonalRe
     }
     for (const [exercise, sets] of Object.entries(session.exercises ?? {})) {
       for (const [setName, weight] of Object.entries(sets)) {
+        if (weight <= 0) continue
         const current = map.get(exercise)
         if (!current || weight > current.weight) {
           map.set(exercise, {
@@ -271,14 +280,14 @@ function sessionExerciseVolume(session: WorkoutSession, exerciseName: string): n
   return 0
 }
 
-/** One point per collapsed session day, chronological. */
+/** One point per calendar day (merged saves), chronological. */
 export function getExerciseTrend(
   sessions: WorkoutSession[],
   exerciseName: string,
   options?: { cardio?: boolean; metric?: TrendMetric },
 ): { date: string; timestamp: number; value: number }[] {
   const metric = options?.metric ?? (options?.cardio ? 'avg' : 'max')
-  const chronological = [...sessions].sort((a, b) => a.timestamp - b.timestamp)
+  const chronological = collapseSessionsByDay(sessions).sort((a, b) => a.timestamp - b.timestamp)
 
   return chronological
     .filter(
@@ -308,9 +317,7 @@ export function getExerciseTrend(
 export function getSectionVolumeTrend(
   sessions: WorkoutSession[],
 ): { date: string; timestamp: number; volume: number }[] {
-  const chronological = [...sessions]
-    .filter(sessionHasMeaningfulData)
-    .sort((a, b) => a.timestamp - b.timestamp)
+  const chronological = collapseSessionsByDay(sessions).sort((a, b) => a.timestamp - b.timestamp)
 
   return chronological.map((s) => ({
     date: new Date(s.timestamp).toLocaleDateString('en-GB', {
@@ -344,7 +351,7 @@ export function filterRecordsForSection(
   records: PersonalRecord[],
   sectionExerciseNames: string[],
 ): PersonalRecord[] {
-  if (sectionExerciseNames.length === 0) return records
+  if (sectionExerciseNames.length === 0) return []
   const names = new Set(sectionExerciseNames.map((n) => n.toLowerCase()))
   return records.filter((r) => names.has(r.exercise.toLowerCase()))
 }
@@ -403,7 +410,9 @@ export function compareToLast(
     lastAvg = exerciseAvgFromSets(lastSets)
   }
   if (lastAvg <= 0) return ''
-  const currentAvg = current.reduce((a, b) => a + b, 0) / current.length
+  const positive = current.filter((w) => w > 0)
+  if (positive.length === 0) return ''
+  const currentAvg = positive.reduce((a, b) => a + b, 0) / positive.length
   if (currentAvg <= 0) return ''
   const diff = currentAvg - lastAvg
   const unit = options?.cardio ? 'min' : 'kg'

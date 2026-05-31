@@ -3,6 +3,7 @@ import {
   mergePersonalRecordSources,
 } from './analytics'
 import { isCardioSection } from './sectionUtils'
+import { calendarDayKey } from './dateUtils'
 import { collapseSessionsByDay } from './sessionMerge'
 import { fetchAllUserSessions } from './supabaseSessions'
 import { getAllSessions } from './storage'
@@ -69,7 +70,9 @@ export async function buildGymBroExport(
     }
   })
 
-  const sessionDays = sections.reduce((n, s) => n + s.sessionDays, 0)
+  const sessionDays = new Set(
+    sections.flatMap((s) => s.sessions.map((sess) => calendarDayKey(sess.timestamp))),
+  ).size
   const totalVolumeKg = sections.reduce((n, s) => n + s.stats.totalVolume, 0)
   const totalSets = sections.reduce((n, s) => n + s.stats.setCount, 0)
 
@@ -94,6 +97,58 @@ export function exportBundleToJson(bundle: GymBroExportBundle): string {
   return JSON.stringify(bundle, null, 2)
 }
 
+function appendSessionSetsToCsv(
+  rows: string[],
+  section: string,
+  session: WorkoutSession,
+): void {
+  const date = new Date(session.timestamp).toLocaleDateString('en-GB')
+  const time = session.saveTime ?? ''
+  const fromSets = new Set<string>()
+
+  if (session.exerciseSets) {
+    for (const [exercise, entries] of Object.entries(session.exerciseSets)) {
+      fromSets.add(exercise)
+      entries.forEach((e, i) => {
+        if (e.weight <= 0) return
+        const vol = e.weight * Math.max(1, e.reps)
+        rows.push(
+          [
+            csvCell(section),
+            csvCell(date),
+            csvCell(time),
+            csvCell(exercise),
+            String(i + 1),
+            String(e.weight),
+            String(e.reps),
+            String(vol),
+          ].join(','),
+        )
+      })
+    }
+  }
+
+  for (const [exercise, sets] of Object.entries(session.exercises ?? {})) {
+    if (fromSets.has(exercise)) continue
+    for (const [setLabel, weight] of Object.entries(sets)) {
+      if (weight <= 0) continue
+      const setNum = parseInt(setLabel.replace(/\D/g, ''), 10) || 1
+      rows.push(
+        [
+          csvCell(section),
+          csvCell(date),
+          csvCell(time),
+          csvCell(exercise),
+          String(setNum),
+          String(weight),
+          '8',
+          String(weight * 8),
+        ].join(','),
+      )
+    }
+  }
+}
+
 /** Flat CSV: one row per set for spreadsheets. */
 export function exportBundleToSetsCsv(bundle: GymBroExportBundle): string {
   const header = 'section,date,time,exercise,set_number,weight_kg,reps,volume_kg'
@@ -101,47 +156,7 @@ export function exportBundleToSetsCsv(bundle: GymBroExportBundle): string {
 
   for (const sec of bundle.sections) {
     for (const session of sec.sessions) {
-      const date = new Date(session.timestamp).toLocaleDateString('en-GB')
-      const time = session.saveTime ?? ''
-      if (session.exerciseSets) {
-        for (const [exercise, entries] of Object.entries(session.exerciseSets)) {
-          entries.forEach((e, i) => {
-            if (e.weight <= 0) return
-            const vol = e.weight * Math.max(1, e.reps)
-            rows.push(
-              [
-                csvCell(sec.section),
-                csvCell(date),
-                csvCell(time),
-                csvCell(exercise),
-                String(i + 1),
-                String(e.weight),
-                String(e.reps),
-                String(vol),
-              ].join(','),
-            )
-          })
-        }
-      } else {
-        for (const [exercise, sets] of Object.entries(session.exercises ?? {})) {
-          for (const [setLabel, weight] of Object.entries(sets)) {
-            if (weight <= 0) continue
-            const setNum = parseInt(setLabel.replace(/\D/g, ''), 10) || 1
-            rows.push(
-              [
-                csvCell(sec.section),
-                csvCell(date),
-                csvCell(time),
-                csvCell(exercise),
-                String(setNum),
-                String(weight),
-                '8',
-                String(weight * 8),
-              ].join(','),
-            )
-          }
-        }
-      }
+      appendSessionSetsToCsv(rows, sec.section, session)
     }
   }
 

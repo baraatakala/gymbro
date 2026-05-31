@@ -40,6 +40,7 @@ import {
   recordLocalCheckIn,
 } from './lib/checkIn'
 import { touchSessionCheckIn } from './lib/supabaseAttendance'
+import { calendarDayKey } from './lib/dateUtils'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
 import { useAttendanceData } from './hooks/useAttendanceData'
@@ -136,9 +137,16 @@ export default function App() {
     return workout.records.filter((r) => names.has(r.exercise.toLowerCase()))
   }, [planExercises, workout.records])
 
+  const trainingDatesMerged = useMemo(() => {
+    const fromSessions = collapseSessionsByDay(workout.sessions).map((s) =>
+      calendarDayKey(s.timestamp),
+    )
+    return [...new Set([...workout.trainingCalendarDates, ...fromSessions])].sort()
+  }, [workout.trainingCalendarDates, workout.sessions])
+
   const trainingStreak = useMemo(
-    () => computeTrainingStreak(workout.trainingCalendarDates).current,
-    [workout.trainingCalendarDates],
+    () => computeTrainingStreak(trainingDatesMerged).current,
+    [trainingDatesMerged],
   )
 
   const { syncMessage, clearSyncMessage } = workout
@@ -951,7 +959,7 @@ export default function App() {
           setRoadmapOpen(true)
           setSidebarOpen(false)
         }}
-        trainingCalendarDates={workout.trainingCalendarDates}
+        trainingCalendarDates={trainingDatesMerged}
       />
 
       <ProgressModal
@@ -966,7 +974,7 @@ export default function App() {
         onReloadSessions={workout.reloadSessions}
         onExport={handleExport}
         exporting={exporting}
-        trainingCalendarDates={workout.trainingCalendarDates}
+        trainingCalendarDates={trainingDatesMerged}
         onOpenInsights={() => {
           setAnalyticsOpen(false)
           setAppView('insights')

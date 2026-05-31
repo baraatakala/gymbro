@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AttendanceBars } from './AttendanceBars'
 import { TrainingCalendar } from './TrainingCalendar'
-import { toIsoDate } from '../../lib/attendanceAnalytics'
+import { allTrainingDayKeys, toIsoDate } from '../../lib/attendanceAnalytics'
 import { exportInsightsSummary, exportInsightsTable } from '../../lib/insightsExport'
 import {
   buildGymDayRows,
@@ -51,6 +51,10 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
   const [visibleMetrics, setVisibleMetricsState] = useState<InsightMetricId[]>(getVisibleMetrics)
   const [sectionOnly, setSectionOnly] = useState('')
 
+  useEffect(() => {
+    if (table !== 'sections') setSectionOnly('')
+  }, [table])
+
   const todayIso = toIsoDate(new Date())
 
   const rows = useMemo((): InsightsRow[] => {
@@ -76,6 +80,26 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
     () => sortRows(filterRows(rows, search), sortKey, sortDir),
     [rows, search, sortKey, sortDir],
   )
+
+  const calendarDates = useMemo(
+    () => allTrainingDayKeys(trainedDates, sessions),
+    [trainedDates, sessions],
+  )
+
+  const chartItems = useMemo(() => {
+    if (!report || chart === 'off') return []
+    if (chart === 'sections') {
+      const source =
+        table === 'sections' ? displayRows : buildSectionRows(report)
+      return source.slice(0, 10).map((r) => ({ label: r.label, value: r.value }))
+    }
+    const source = table === 'weekdays' ? displayRows : buildWeekdayRows(report)
+    return source.map((r) => ({
+      label: r.label,
+      value: r.value,
+      highlight: r.meta === 'lowest',
+    }))
+  }, [report, chart, table, displayRows])
 
   const toggleMetric = (id: InsightMetricId) => {
     setVisibleMetricsState((prev) => {
@@ -310,12 +334,15 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
                     ))}
                   </select>
                 )}
+                <span className="text-xs text-slate-500 tabular-nums">
+                  {displayRows.length} row{displayRows.length !== 1 ? 's' : ''}
+                </span>
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Filter rows…"
-                  className="input-field ml-auto max-w-[10rem] py-1.5 text-xs sm:max-w-xs"
+                  className="input-field max-w-[10rem] py-1.5 text-xs sm:max-w-xs"
                 />
                 <select
                   value={sortKey}
@@ -380,21 +407,16 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
 
             {chart !== 'off' && (
               <div className="glass-panel p-4">
-                <AttendanceBars
-                  items={
-                    chart === 'sections'
-                      ? report.sectionVisitCounts.slice(0, 10).map((s) => ({
-                          label: s.section,
-                          value: s.visits,
-                        }))
-                      : report.weekdayVisits.map((w) => ({
-                          label: w.weekday,
-                          value: w.count,
-                          highlight: w.weekday === report.mostSkippedWeekday,
-                        }))
-                  }
-                  unit={chart === 'sections' ? ' visits' : ' days'}
-                />
+                {chartItems.length === 0 ? (
+                  <p className="text-center text-sm text-slate-500">
+                    No data for this chart with current filters.
+                  </p>
+                ) : (
+                  <AttendanceBars
+                    items={chartItems}
+                    unit={chart === 'sections' ? ' visits' : ' days'}
+                  />
+                )}
               </div>
             )}
 
@@ -403,7 +425,7 @@ export function InsightsView({ attendance, planSections }: InsightsViewProps) {
                 Training calendar
               </summary>
               <div className="border-t border-slate-800 px-4 py-4">
-                <TrainingCalendar trainedDates={trainedDates} />
+                <TrainingCalendar trainedDates={calendarDates} />
               </div>
             </details>
           </div>
