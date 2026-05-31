@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "preview:pages": "vite preview --base /gymbro/",
     "audit:supabase": "node scripts/audit-supabase.mjs",
+    "audit:analytics": "node scripts/audit-analytics.mjs",
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "publish:pages": "node scripts/publish-pages.mjs"
   },

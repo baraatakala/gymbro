@@ -19,16 +19,27 @@
 ## Personal records
 
 - **Cloud:** one row per `(user_id, exercise_name)`; best weight, then reps.
-- **UI records tab:** filtered to **plan exercises** for the open section only.
-- **Computed PRs:** `calculatePersonalRecords` from session history when cloud list is empty.
+- **UI records tab:** `mergePersonalRecordSources(cloud, collapsed sessions)`; filtered to plan exercises; sort (weight / date / name) + search filter.
+
+## Trends
+
+| Metric | Strength | Cardio |
+|--------|----------|--------|
+| **max** (default) | Heaviest set per session day | Longest interval (max min) |
+| **avg** | Mean weight across sets | Mean minutes |
+| **volume** | Σ (weight × reps) per day | — |
+| **Section volume** | Total kg for all exercises that day | hidden |
+
+`averageDaysBetweenSessions` uses gaps between **consecutive calendar days**, not total span ÷ count.
 
 ## Insights (`generateInsights`)
 
 Uses collapsed session history plus optional:
 
-- `savedToday` / `totalExercises` ΓÇö todayΓÇÖs plan progress
-- `sectionExerciseNames` ΓÇö coverage of planned lifts
-- `cloudRecords` ΓÇö PR highlights scoped to section exercises
+- `savedToday` / `totalExercises` — today's plan progress
+- `sectionExerciseNames` — coverage; **14+ day stale** exercise reminders
+- `cloudRecords` + sessions — merged PRs via `mergePersonalRecordSources`; est. **1RM** (Brzycki) on top lift
+- **Volume plateau** — last 3 session days within 5% total volume
 
 ## Export (`exportReport`)
 

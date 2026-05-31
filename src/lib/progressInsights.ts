@@ -1,58 +1,22 @@
 import {
+  averageDaysBetweenSessions,
   calculateDayStats,
-  calculatePersonalRecords,
+  daysSinceLastExerciseLog,
+  estimateOneRepMax,
+  filterRecordsForSection,
+  getSectionVolumeTrend,
+  mergePersonalRecordSources,
+  sortPersonalRecords,
 } from './analytics'
+import { calendarDayKey } from './dateUtils'
+import { sessionHasMeaningfulData } from './sessionMerge'
 import type { Insight, PersonalRecord, WorkoutSession } from '../types/workout'
-
-function exerciseAvgFromSets(sets: Record<string, number>): number {
-  const values = Object.values(sets).filter((w) => w > 0)
-  if (values.length === 0) return 0
-  return values.reduce((a, b) => a + b, 0) / values.length
-}
-
-function exerciseAvgFromEntries(entries: { weight: number; reps: number }[]): number {
-  const weights = entries.map((e) => e.weight).filter((w) => w > 0)
-  if (weights.length === 0) return 0
-  return weights.reduce((a, b) => a + b, 0) / weights.length
-}
-
-function sessionExerciseAvg(session: WorkoutSession, exerciseName: string): number {
-  if (session.exerciseSets?.[exerciseName]?.length) {
-    return exerciseAvgFromEntries(session.exerciseSets[exerciseName])
-  }
-  const legacy = session.exercises?.[exerciseName]
-  if (legacy) return exerciseAvgFromSets(legacy)
-  return 0
-}
 
 function sessionExerciseNames(session: WorkoutSession): string[] {
   const names = new Set<string>()
   Object.keys(session.exercises ?? {}).forEach((n) => names.add(n))
   if (session.exerciseSets) Object.keys(session.exerciseSets).forEach((n) => names.add(n))
   return [...names]
-}
-
-/** Pass collapseSessionsByDay() output — one row per calendar day. */
-export function getExerciseTrend(
-  sessions: WorkoutSession[],
-  exerciseName: string,
-): { date: string; avg: number }[] {
-  const chronological = [...sessions].sort((a, b) => a.timestamp - b.timestamp)
-
-  return chronological
-    .filter(
-      (s) =>
-        s.exercises?.[exerciseName] ||
-        (s.exerciseSets && s.exerciseSets[exerciseName]?.length),
-    )
-    .map((s) => ({
-      date: new Date(s.timestamp).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-      }),
-      avg: Number(sessionExerciseAvg(s, exerciseName).toFixed(1)),
-    }))
-    .filter((p) => p.avg > 0)
 }
 
 /** Pass collapseSessionsByDay() output — one row per calendar day. */
@@ -77,7 +41,7 @@ export function generateInsights(
     ) {
       insights.push({
         icon: '🎯',
-        title: 'Today\'s progress',
+        title: "Today's progress",
         message: `${options.savedToday}/${options.totalExercises} exercises saved today on ${options?.sectionLabel ?? 'this section'}.`,
         tone: 'positive',
       })
@@ -91,6 +55,7 @@ export function generateInsights(
     }
     return insights
   }
+
   const stats = calculateDayStats(sessions, { cardio: options?.cardio })
 
   if (
@@ -109,7 +74,7 @@ export function generateInsights(
     } else if (options.savedToday > 0) {
       insights.push({
         icon: '🎯',
-        title: 'Today\'s progress',
+        title: "Today's progress",
         message: `${options.savedToday}/${options.totalExercises} exercises saved (${pct}%). ${options.totalExercises - options.savedToday} left on your list.`,
         tone: 'positive',
       })
@@ -140,32 +105,65 @@ export function generateInsights(
         tone: 'positive',
       })
     }
+
+    const stale = options.sectionExerciseNames.filter((name) => {
+      const days = daysSinceLastExerciseLog(sessions, name)
+      return days !== null && days >= 14
+    })
+    if (stale.length > 0 && stale.length <= 4) {
+      insights.push({
+        icon: '⏳',
+        title: 'Due for a refresh',
+        message: `${stale.join(', ')} — not logged in 2+ weeks. Rotating these back in prevents weak points.`,
+        tone: 'warning',
+      })
+    } else if (stale.length > 4) {
+      insights.push({
+        icon: '⏳',
+        title: 'Rotation reminder',
+        message: `${stale.length} plan exercises haven't been logged in 14+ days — pick 1–2 this session.`,
+        tone: 'warning',
+      })
+    }
   }
 
-  if (sessions.length >= 2) {
-    const chronological = [...sessions].sort((a, b) => b.timestamp - a.timestamp)
-    const spanMs = chronological[0].timestamp - chronological[chronological.length - 1].timestamp
-    const daysBetween = spanMs / (1000 * 60 * 60 * 24) / (sessions.length - 1)
-
-    if (daysBetween <= 2) {
+  const avgGap = averageDaysBetweenSessions(sessions)
+  if (avgGap !== null) {
+    if (avgGap <= 3) {
       insights.push({
         icon: '🔥',
         title: 'Strong consistency',
-        message: `You train about every ${daysBetween.toFixed(1)} days on average.`,
+        message: `You train this section about every ${avgGap.toFixed(1)} days on average.`,
         tone: 'positive',
       })
-    } else if (daysBetween <= 7) {
+    } else if (avgGap <= 7) {
       insights.push({
         icon: '💪',
         title: 'Steady rhythm',
-        message: `${daysBetween.toFixed(1)} days between sessions — consider one extra day per week for faster gains.`,
+        message: `${avgGap.toFixed(1)} days between session days — one extra day per week speeds strength gains.`,
         tone: 'neutral',
       })
     } else {
       insights.push({
         icon: '📅',
         title: 'Room to improve frequency',
-        message: `Average gap is ${daysBetween.toFixed(0)} days. Shorter gaps usually help strength progress.`,
+        message: `Average gap is ${avgGap.toFixed(0)} days between session days. Shorter gaps usually help progress.`,
+        tone: 'warning',
+      })
+    }
+  }
+
+  const volumeTrend = getSectionVolumeTrend(sessions)
+  if (volumeTrend.length >= 2 && !options?.cardio) {
+    const recent = volumeTrend.slice(-3)
+    const maxVol = Math.max(...recent.map((p) => p.volume))
+    const minVol = Math.min(...recent.map((p) => p.volume))
+    if (maxVol > 0 && (maxVol - minVol) / maxVol <= 0.05) {
+      insights.push({
+        icon: '📉',
+        title: 'Volume plateau',
+        message:
+          'Last few sessions show flat total volume — try +2.5 kg on a main lift or add one back-off set.',
         tone: 'warning',
       })
     }
@@ -181,53 +179,74 @@ export function generateInsights(
     })
   }
 
-  if (stats.improvement !== null) {
+  if (stats.improvement !== null && !options?.cardio) {
     if (stats.improvement > 0) {
       insights.push({
         icon: '📈',
         title: 'Progressive overload',
-        message: `+${stats.improvement}% average weight on shared exercises since your first session.`,
+        message: `+${stats.improvement}% average weight on shared exercises since your first session day.`,
         tone: 'positive',
       })
     } else if (stats.improvement < -5) {
       insights.push({
         icon: '⚠️',
         title: 'Recent dip',
-        message: `${stats.improvement}% vs your first session — check sleep, nutrition, or deload if needed.`,
+        message: `${stats.improvement}% vs your first session — check sleep, nutrition, or a deload if needed.`,
         tone: 'warning',
       })
     }
   }
 
-  const sessionPrs = calculatePersonalRecords(sessions)
-  const prSource =
-    options?.cloudRecords && options.cloudRecords.length > 0
-      ? options.cloudRecords
-      : sessionPrs
-  let sectionPrs = prSource
-  if (options?.sectionExerciseNames?.length) {
-    sectionPrs = prSource.filter((p) =>
-      options.sectionExerciseNames!.some(
-        (n) => n.toLowerCase() === p.exercise.toLowerCase(),
-      ),
-    )
-  }
-  if (sectionPrs.length > 0) {
-    const top = [...sectionPrs].sort((a, b) => b.weight - a.weight)[0]
+  const mergedPrs = mergePersonalRecordSources(
+    options?.cloudRecords ?? [],
+    sessions,
+  )
+  const sectionPrs = filterRecordsForSection(
+    mergedPrs,
+    options?.sectionExerciseNames ?? [],
+  )
+  const sorted = sortPersonalRecords(sectionPrs, 'weight')
+
+  if (sorted.length > 0) {
+    const top = sorted[0]
     const unit = options?.cardio ? 'min' : 'kg'
     const setLabel =
-      'set' in top && top.set
+      top.set && top.set !== 'PR'
         ? top.set
         : top.reps && top.reps > 1
           ? `${top.reps} reps`
           : 'PR'
+    let message = `${top.exercise}: ${top.weight} ${unit} (${setLabel}).`
+    if (!options?.cardio && top.reps && top.reps > 1) {
+      const e1rm = estimateOneRepMax(top.weight, top.reps)
+      if (e1rm > top.weight) {
+        message += ` Est. 1RM ≈ ${e1rm} kg.`
+      }
+    }
     insights.push({
       icon: '🏆',
       title: options?.cardio ? 'Longest session' : 'Top lift',
-      message: `${top.exercise}: ${top.weight} ${unit} (${setLabel}).`,
+      message,
+      tone: 'positive',
+    })
+  }
+
+  const todayKey = calendarDayKey(Date.now())
+  const sessionDays = new Set(
+    sessions.filter(sessionHasMeaningfulData).map((s) => calendarDayKey(s.timestamp)),
+  )
+  if (sessionDays.has(todayKey)) {
+    insights.push({
+      icon: '📆',
+      title: 'Logged today',
+      message: `This section counts toward your training calendar for ${new Date().toLocaleDateString('en-GB')}.`,
       tone: 'positive',
     })
   }
 
   return insights
 }
+
+// Re-export for components that import from this module
+export { getExerciseTrend, getSectionVolumeTrend } from './analytics'
+export type { TrendMetric } from './analytics'

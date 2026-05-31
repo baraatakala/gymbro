@@ -1,5 +1,8 @@
 import { calendarDayKey } from './dateUtils'
 import { mergeSessionsForPrefill, sessionHasMeaningfulData } from './sessionMerge'
+
+export type TrendMetric = 'avg' | 'max' | 'volume'
+export type RecordSortKey = 'weight' | 'date' | 'name'
 import {
   DEFAULT_REPS_PER_SET,
   type DayStats,
@@ -239,6 +242,150 @@ export function mergePersonalRecordSources(
     if (!prev || isBetterRecord(r, prev)) map.set(r.exercise, r)
   }
   return [...map.values()].sort((a, b) => b.weight - a.weight)
+}
+
+function sessionExerciseMax(session: WorkoutSession, exerciseName: string): number {
+  if (session.exerciseSets?.[exerciseName]?.length) {
+    const weights = session.exerciseSets[exerciseName]
+      .map((e) => e.weight)
+      .filter((w) => w > 0)
+    return weights.length ? Math.max(...weights) : 0
+  }
+  const legacy = session.exercises?.[exerciseName]
+  if (legacy) {
+    const values = setValues(legacy)
+    return values.length ? Math.max(...values) : 0
+  }
+  return 0
+}
+
+function sessionExerciseVolume(session: WorkoutSession, exerciseName: string): number {
+  if (session.exerciseSets?.[exerciseName]?.length) {
+    return session.exerciseSets[exerciseName].reduce(
+      (sum, e) => (e.weight > 0 ? sum + e.weight * Math.max(1, e.reps) : sum),
+      0,
+    )
+  }
+  const legacy = session.exercises?.[exerciseName]
+  if (legacy) return calculateVolume(legacy)
+  return 0
+}
+
+/** One point per collapsed session day, chronological. */
+export function getExerciseTrend(
+  sessions: WorkoutSession[],
+  exerciseName: string,
+  options?: { cardio?: boolean; metric?: TrendMetric },
+): { date: string; timestamp: number; value: number }[] {
+  const metric = options?.metric ?? (options?.cardio ? 'avg' : 'max')
+  const chronological = [...sessions].sort((a, b) => a.timestamp - b.timestamp)
+
+  return chronological
+    .filter(
+      (s) =>
+        s.exercises?.[exerciseName] ||
+        (s.exerciseSets && s.exerciseSets[exerciseName]?.length),
+    )
+    .map((s) => {
+      let value = 0
+      if (metric === 'max') value = sessionExerciseMax(s, exerciseName)
+      else if (metric === 'volume') value = sessionExerciseVolume(s, exerciseName)
+      else value = sessionExerciseAvg(s, exerciseName)
+
+      return {
+        date: new Date(s.timestamp).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+        }),
+        timestamp: s.timestamp,
+        value: Number(value.toFixed(1)),
+      }
+    })
+    .filter((p) => p.value > 0)
+}
+
+/** Total logged volume per session day (all exercises in section). */
+export function getSectionVolumeTrend(
+  sessions: WorkoutSession[],
+): { date: string; timestamp: number; volume: number }[] {
+  const chronological = [...sessions]
+    .filter(sessionHasMeaningfulData)
+    .sort((a, b) => a.timestamp - b.timestamp)
+
+  return chronological.map((s) => ({
+    date: new Date(s.timestamp).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+    }),
+    timestamp: s.timestamp,
+    volume: Math.round(accumulateSessionStats(s).totalVolume),
+  }))
+}
+
+/** Average calendar days between consecutive session days (not span ÷ count). */
+export function averageDaysBetweenSessions(sessions: WorkoutSession[]): number | null {
+  const keys = [
+    ...new Set(
+      sessions.filter(sessionHasMeaningfulData).map((s) => calendarDayKey(s.timestamp)),
+    ),
+  ].sort()
+  if (keys.length < 2) return null
+
+  let gapSum = 0
+  for (let i = 1; i < keys.length; i++) {
+    const prev = new Date(`${keys[i - 1]}T12:00:00`).getTime()
+    const curr = new Date(`${keys[i]}T12:00:00`).getTime()
+    gapSum += (curr - prev) / (1000 * 60 * 60 * 24)
+  }
+  return gapSum / (keys.length - 1)
+}
+
+export function filterRecordsForSection(
+  records: PersonalRecord[],
+  sectionExerciseNames: string[],
+): PersonalRecord[] {
+  if (sectionExerciseNames.length === 0) return records
+  const names = new Set(sectionExerciseNames.map((n) => n.toLowerCase()))
+  return records.filter((r) => names.has(r.exercise.toLowerCase()))
+}
+
+export function sortPersonalRecords(
+  records: PersonalRecord[],
+  sortBy: RecordSortKey,
+): PersonalRecord[] {
+  const copy = [...records]
+  if (sortBy === 'date') {
+    return copy.sort((a, b) => b.date - a.date)
+  }
+  if (sortBy === 'name') {
+    return copy.sort((a, b) => a.exercise.localeCompare(b.exercise))
+  }
+  return copy.sort((a, b) => {
+    if (b.weight !== a.weight) return b.weight - a.weight
+    return (b.reps ?? 0) - (a.reps ?? 0)
+  })
+}
+
+/** Brzycki estimate — useful for comparing strength across rep ranges. */
+export function estimateOneRepMax(weightKg: number, reps: number): number {
+  if (weightKg <= 0 || reps <= 0) return 0
+  if (reps === 1) return weightKg
+  return Math.round(weightKg * (36 / (37 - Math.min(reps, 12))))
+}
+
+export function daysSinceLastExerciseLog(
+  sessions: WorkoutSession[],
+  exerciseName: string,
+): number | null {
+  const key = exerciseName.toLowerCase()
+  let latest = 0
+  for (const s of sessions) {
+    const names = sessionExerciseNames(s).map((n) => n.toLowerCase())
+    if (names.includes(key) && s.timestamp > latest) latest = s.timestamp
+  }
+  if (!latest) return null
+  const dayMs = 24 * 60 * 60 * 1000
+  return Math.floor((Date.now() - latest) / dayMs)
 }
 
 export function compareToLast(

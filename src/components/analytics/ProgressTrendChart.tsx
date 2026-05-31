@@ -42,8 +42,12 @@ export default function ProgressTrendChart({
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+          x: { ticks: { color: '#94a3b8', maxRotation: 45 }, grid: { color: '#334155' } },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' },
+          },
         },
       }}
     />

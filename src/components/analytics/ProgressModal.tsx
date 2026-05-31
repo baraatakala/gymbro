@@ -2,9 +2,15 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Modal } from '../ui/Modal'
 import {
   calculateDayStats,
-  calculatePersonalRecords,
+  filterRecordsForSection,
+  getExerciseTrend,
+  getSectionVolumeTrend,
+  mergePersonalRecordSources,
+  sortPersonalRecords,
+  type RecordSortKey,
+  type TrendMetric,
 } from '../../lib/analytics'
-import { generateInsights, getExerciseTrend } from '../../lib/progressInsights'
+import { generateInsights } from '../../lib/progressInsights'
 import { collapseSessionsByDay, sessionsHaveLoggedData, sessionsTodayOnly } from '../../lib/sessionMerge'
 import { isCardioSection } from '../../lib/sectionUtils'
 import { DEFAULT_REPS_PER_SET, type PersonalRecord, type WorkoutSession } from '../../types/workout'
@@ -71,42 +77,33 @@ export function ProgressModal({
     () => calculateDayStats(collapsedSessions, { cardio }),
     [collapsedSessions, cardio],
   )
-  const computedRecords = useMemo(
-    () => calculatePersonalRecords(collapsedSessions),
-    [collapsedSessions],
+  const [recordSort, setRecordSort] = useState<RecordSortKey>('weight')
+  const [recordFilter, setRecordFilter] = useState('')
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>(cardio ? 'avg' : 'max')
+  const [trendScope, setTrendScope] = useState<'exercise' | 'section'>('exercise')
+
+  const mergedRecords = useMemo(
+    () => mergePersonalRecordSources(cloudRecords, collapsedSessions),
+    [cloudRecords, collapsedSessions],
   )
 
-  const sectionNameSet = useMemo(
-    () => new Set(sectionExerciseNames.map((n) => n.toLowerCase())),
-    [sectionExerciseNames],
+  const sectionRecords = useMemo(
+    () => filterRecordsForSection(mergedRecords, sectionExerciseNames),
+    [mergedRecords, sectionExerciseNames],
   )
-
-  const allRecords = useMemo(() => {
-    if (cloudRecords.length > 0) {
-      return cloudRecords.map((r) => ({
-        exercise: r.exercise,
-        weight: r.weight,
-        date: r.date,
-        set: r.reps ? `${r.reps} reps` : 'PR',
-      }))
-    }
-    return computedRecords.map((r) => ({
-      exercise: r.exercise,
-      weight: r.weight,
-      date: r.date,
-      set: r.set,
-    }))
-  }, [cloudRecords, computedRecords])
 
   const records = useMemo(() => {
-    if (sectionNameSet.size === 0) return allRecords
-    return allRecords.filter((r) => sectionNameSet.has(r.exercise.toLowerCase()))
-  }, [allRecords, sectionNameSet])
+    const sorted = sortPersonalRecords(sectionRecords, recordSort)
+    const q = recordFilter.trim().toLowerCase()
+    if (!q) return sorted
+    return sorted.filter((r) => r.exercise.toLowerCase().includes(q))
+  }, [sectionRecords, recordSort, recordFilter])
 
   const otherSectionRecords = useMemo(() => {
-    if (sectionNameSet.size === 0) return []
-    return allRecords.filter((r) => !sectionNameSet.has(r.exercise.toLowerCase()))
-  }, [allRecords, sectionNameSet])
+    if (sectionExerciseNames.length === 0) return []
+    const names = new Set(sectionExerciseNames.map((n) => n.toLowerCase()))
+    return mergedRecords.filter((r) => !names.has(r.exercise.toLowerCase()))
+  }, [mergedRecords, sectionExerciseNames])
 
   const insights = useMemo(() => {
     if (!open || tab !== 'insights') return []
@@ -165,10 +162,27 @@ export function ProgressModal({
   const [chartExercise, setChartExercise] = useState('')
   const activeExercise = chartExercise || exerciseNames[0] || ''
 
-  const trend = useMemo(() => {
-    if (!activeExercise || tab !== 'trends') return []
-    return getExerciseTrend(collapsedSessions, activeExercise)
-  }, [collapsedSessions, activeExercise, tab])
+  useEffect(() => {
+    setTrendMetric(cardio ? 'avg' : 'max')
+  }, [cardio, day])
+
+  const exerciseTrend = useMemo(() => {
+    if (!activeExercise || tab !== 'trends' || trendScope !== 'exercise') return []
+    return getExerciseTrend(collapsedSessions, activeExercise, { cardio, metric: trendMetric })
+  }, [collapsedSessions, activeExercise, tab, trendScope, cardio, trendMetric])
+
+  const sectionVolumeTrend = useMemo(() => {
+    if (tab !== 'trends' || trendScope !== 'section' || cardio) return []
+    return getSectionVolumeTrend(collapsedSessions)
+  }, [collapsedSessions, tab, trendScope, cardio])
+
+  const trendChart = trendScope === 'section' ? sectionVolumeTrend : exerciseTrend
+  const trendChartLabel =
+    trendScope === 'section'
+      ? `${day} total volume (kg)`
+      : `${activeExercise} — ${
+          trendMetric === 'max' ? 'best set' : trendMetric === 'volume' ? 'volume' : 'avg'
+        } (${cardio ? 'min' : 'kg'})`
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -341,23 +355,69 @@ export function ProgressModal({
                     <p className="text-center text-sm text-slate-500">
                       Log at least one workout on {day} to see trends.
                     </p>
-                  ) : exerciseNames.length > 0 ? (
+                  ) : exerciseNames.length > 0 || trendScope === 'section' ? (
                     <>
-                      <label className="block text-sm text-slate-400">
-                        Exercise
-                        <select
-                          value={activeExercise}
-                          onChange={(e) => setChartExercise(e.target.value)}
-                          className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTrendScope('exercise')}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                            trendScope === 'exercise'
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
                         >
-                          {exerciseNames.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {trend.length >= 2 ? (
+                          Per exercise
+                        </button>
+                        {!cardio && (
+                          <button
+                            type="button"
+                            onClick={() => setTrendScope('section')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                              trendScope === 'section'
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            Section volume
+                          </button>
+                        )}
+                      </div>
+                      {trendScope === 'exercise' && (
+                        <>
+                          <label className="block text-sm text-slate-400">
+                            Exercise
+                            <select
+                              value={activeExercise}
+                              onChange={(e) => setChartExercise(e.target.value)}
+                              className="input-field mt-1 w-full py-2 text-sm"
+                            >
+                              {exerciseNames.map((name) => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-sm text-slate-400">
+                            Metric
+                            <select
+                              value={trendMetric}
+                              onChange={(e) => setTrendMetric(e.target.value as TrendMetric)}
+                              className="input-field mt-1 w-full py-2 text-sm"
+                            >
+                              <option value="max">
+                                {cardio ? 'Longest (max min)' : 'Heaviest set (max kg)'}
+                              </option>
+                              <option value="avg">
+                                {cardio ? 'Average minutes' : 'Average weight'}
+                              </option>
+                              {!cardio && <option value="volume">Set volume (kg)</option>}
+                            </select>
+                          </label>
+                        </>
+                      )}
+                      {trendChart.length >= 2 ? (
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                           <Suspense
                             fallback={
@@ -367,26 +427,35 @@ export function ProgressModal({
                             }
                           >
                             <ProgressTrendChart
-                              labels={trend.map((t) => t.date)}
-                              values={trend.map((t) => t.avg)}
-                              datasetLabel={`${activeExercise} avg (${cardio ? 'min' : 'kg'})`}
+                              labels={trendChart.map((t) => t.date)}
+                              values={trendChart.map((t) =>
+                                trendScope === 'section'
+                                  ? (t as { volume: number }).volume
+                                  : (t as { value: number }).value,
+                              )}
+                              datasetLabel={trendChartLabel}
                             />
                           </Suspense>
                         </div>
-                      ) : trend.length === 1 ? (
+                      ) : trendChart.length === 1 ? (
                         <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-6 py-8 text-center">
                           <p className="text-3xl font-bold text-emerald-400">
-                            {trend[0].avg} {cardio ? 'min' : 'kg'}
+                            {trendScope === 'section'
+                              ? (trendChart[0] as { volume: number }).volume
+                              : (trendChart[0] as { value: number }).value}{' '}
+                            {trendScope === 'section' || trendMetric === 'volume' ? 'kg' : cardio ? 'min' : 'kg'}
                           </p>
-                          <p className="mt-2 text-sm text-slate-400">{trend[0].date}</p>
+                          <p className="mt-2 text-sm text-slate-400">{trendChart[0].date}</p>
                           <p className="mt-3 text-xs text-slate-500">
-                            One session logged. Train this exercise again on another day to
-                            see a trend line.
+                            One session day logged. Train again on another day to see a trend
+                            line.
                           </p>
                         </div>
                       ) : (
                         <p className="text-center text-sm text-slate-500">
-                          No history for {activeExercise} on {day} yet.
+                          {trendScope === 'section'
+                            ? `No volume history for ${day} yet.`
+                            : `No history for ${activeExercise} on ${day} yet.`}
                         </p>
                       )}
                     </>
@@ -398,6 +467,27 @@ export function ProgressModal({
 
               {tab === 'records' && (
                 <div className="space-y-4">
+                  {sectionRecords.length > 0 && (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="search"
+                        value={recordFilter}
+                        onChange={(e) => setRecordFilter(e.target.value)}
+                        placeholder="Filter exercises…"
+                        className="input-field flex-1 py-2 text-sm"
+                      />
+                      <select
+                        value={recordSort}
+                        onChange={(e) => setRecordSort(e.target.value as RecordSortKey)}
+                        className="input-field py-2 text-sm sm:w-40"
+                        aria-label="Sort records"
+                      >
+                        <option value="weight">Heaviest first</option>
+                        <option value="date">Newest first</option>
+                        <option value="name">A–Z</option>
+                      </select>
+                    </div>
+                  )}
                   {records.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-700 py-10 text-center text-sm text-slate-500">
                       No personal records yet. Save a set with a new max weight to earn a PR.
@@ -405,7 +495,10 @@ export function ProgressModal({
                   ) : (
                     <>
                       <div className="grid gap-3 sm:grid-cols-3">
-                        <StatCard label="Personal records" value={String(records.length)} />
+                        <StatCard
+                          label="Personal records"
+                          value={String(sectionRecords.length)}
+                        />
                         <StatCard
                           label={cardio ? 'Longest' : 'Heaviest single'}
                           value={
@@ -417,7 +510,7 @@ export function ProgressModal({
                         <StatCard
                           label="PRs this month"
                           value={String(
-                            records.filter((r) => {
+                            sectionRecords.filter((r) => {
                               const d = new Date(r.date)
                               const now = new Date()
                               return (

@@ -1,4 +1,7 @@
-import { calculateDayStats, calculatePersonalRecords } from './analytics'
+import {
+  calculateDayStats,
+  mergePersonalRecordSources,
+} from './analytics'
 import { isCardioSection } from './sectionUtils'
 import { collapseSessionsByDay } from './sessionMerge'
 import { fetchAllUserSessions } from './supabaseSessions'
@@ -70,10 +73,7 @@ export async function buildGymBroExport(
   const totalVolumeKg = sections.reduce((n, s) => n + s.stats.totalVolume, 0)
   const totalSets = sections.reduce((n, s) => n + s.stats.setCount, 0)
 
-  const records =
-    cloudRecords.length > 0
-      ? cloudRecords
-      : calculatePersonalRecords(allSessions)
+  const records = mergePersonalRecordSources(cloudRecords, allSessions)
 
   return {
     version: EXPORT_VERSION,
