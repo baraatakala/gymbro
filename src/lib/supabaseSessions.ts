@@ -2,7 +2,7 @@ import { validateSetEntries } from './validators'
 import { getAllSessions, getWorkoutStorageKeys } from './storage'
 import { mergeSessionsForPrefill } from './sessionMerge'
 import { isCardioSection } from './sectionUtils'
-import { getLocalCheckIn } from './checkIn'
+import { getLocalCheckIn, recordLocalCheckOut } from './checkIn'
 import { calendarDayKey, isSessionOnLocalToday } from './dateUtils'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { ensureSupabaseUser, tryEnsureSupabaseUser } from './supabaseAuth'
@@ -122,6 +122,9 @@ function mapSessionRow(row: {
   timestamp: number
   save_time?: string | null
   save_date?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  status?: string | null
   exercises: unknown
   total_volume_kg?: number | string | null
   workout_sets?: {
@@ -162,6 +165,9 @@ function mapSessionRow(row: {
     exercises: legacyExercises,
     exerciseSets: Object.keys(exerciseSets).length > 0 ? exerciseSets : undefined,
     storedVolumeKg: storedVolume > 0 ? storedVolume : undefined,
+    startedAt: row.started_at ?? undefined,
+    finishedAt: row.finished_at ?? undefined,
+    status: row.status ?? undefined,
   }
 }
 
@@ -378,7 +384,6 @@ async function upsertExerciseOnStoredSession(
         exercises: { [exerciseName]: legacy },
         user_id: userId,
         started_at: loggedAt,
-        finished_at: loggedAt,
         status: 'in_progress',
         total_volume_kg: volume,
       })
@@ -424,6 +429,9 @@ export async function fetchSessionsForDay(day: string): Promise<WorkoutSession[]
       timestamp,
       save_time,
       save_date,
+      started_at,
+      finished_at,
+      status,
       exercises,
       total_volume_kg,
       workout_sets ( exercise_name, set_number, weight_kg, reps )
@@ -463,6 +471,9 @@ export async function fetchAllUserSessions(): Promise<WorkoutSession[]> {
       timestamp,
       save_time,
       save_date,
+      started_at,
+      finished_at,
+      status,
       exercises,
       total_volume_kg,
       workout_sets ( exercise_name, set_number, weight_kg, reps )
@@ -799,7 +810,6 @@ export async function saveExerciseToSupabase(
         exercises: mergedExercises,
         save_time: now.toLocaleTimeString('en-GB', { hour12: false }),
         save_date: now.toLocaleDateString('en-GB'),
-        finished_at: now.toISOString(),
         status: 'in_progress',
         total_volume_kg: totalVolume,
       })
@@ -828,7 +838,6 @@ export async function saveExerciseToSupabase(
         exercises: { [exerciseName]: legacy },
         user_id: userId,
         started_at: checkInAt,
-        finished_at: now.toISOString(),
         status: 'in_progress',
         total_volume_kg: volume,
       })
@@ -1037,6 +1046,8 @@ export async function finishWorkoutForDay(day: string): Promise<boolean> {
       .in('id', todayIds)
       .is('started_at', null)
   }
+
+  recordLocalCheckOut(day)
 
   return true
 }

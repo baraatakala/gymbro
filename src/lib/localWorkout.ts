@@ -1,3 +1,4 @@
+import { recordLocalCheckOut } from './checkIn'
 import { calculatePersonalRecords } from './analytics'
 import { isSessionOnLocalToday } from './dateUtils'
 import { exercisesLoggedToday } from './sessionMerge'
@@ -118,5 +119,8 @@ export function saveExerciseLocally(
 
 /** Local finish: true when at least one exercise was saved today for this section. */
 export function finishWorkoutLocally(day: string): boolean {
-  return exercisesLoggedToday(getSessionsForDay(day)).size > 0
+  const logged = exercisesLoggedToday(getSessionsForDay(day))
+  if (logged.size === 0) return false
+  recordLocalCheckOut(day)
+  return true
 }

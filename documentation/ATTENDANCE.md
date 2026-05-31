@@ -1,6 +1,6 @@
 # Insights (training habits)
 
-
+For **check-in / check-out** steps see [WORKFLOW.md](./WORKFLOW.md).
 
 ## Navigation (split UI)
 

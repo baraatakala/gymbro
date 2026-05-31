@@ -1,3 +1,4 @@
+import { getLocalCheckIn, getLocalCheckOut } from './checkIn'
 import { supabase } from './supabase'
 import { ensureSupabaseUser, tryEnsureSupabaseUser } from './supabaseAuth'
 import { DEFAULT_REPS_PER_SET, type SetEntry, type WorkoutSession } from '../types/workout'
@@ -123,13 +124,16 @@ export async function upsertWorkoutSession(session: WorkoutSession): Promise<voi
 
   const loggedAt = new Date(session.timestamp).toISOString()
 
+  const checkOut = getLocalCheckOut(session.day) ?? loggedAt
+
   const { data, error } = await supabase
     .from('workout_sessions')
     .upsert(
       {
         ...toRow(session, userId),
+        started_at: getLocalCheckIn(session.day) ?? loggedAt,
         status: 'completed',
-        finished_at: loggedAt,
+        finished_at: checkOut,
       },
       { onConflict: 'storage_key' },
     )

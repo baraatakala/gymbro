@@ -4,6 +4,7 @@ interface WorkoutDockProps {
   sectionName: string
   savedCount: number
   totalExercises: number
+  sessionComplete?: boolean
   workoutTime: string
   restTime: string
   isResting: boolean
@@ -16,6 +17,7 @@ export function WorkoutDock({
   sectionName,
   savedCount,
   totalExercises,
+  sessionComplete = false,
   workoutTime,
   restTime,
   isResting,
@@ -89,13 +91,16 @@ export function WorkoutDock({
           <button
             type="button"
             onClick={onFinish}
-            className={`tap-target rounded-xl px-3.5 text-xs font-bold text-white ${
-              complete
-                ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-950/40'
-                : 'bg-emerald-700 hover:bg-emerald-600'
+            disabled={sessionComplete || savedCount === 0}
+            className={`tap-target rounded-xl px-3.5 text-xs font-bold text-white disabled:opacity-40 ${
+              sessionComplete
+                ? 'bg-slate-700'
+                : complete
+                  ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-950/40'
+                  : 'bg-emerald-700 hover:bg-emerald-600'
             }`}
           >
-            {complete ? 'Done ✓' : 'Finish'}
+            {sessionComplete ? 'Ended ✓' : complete ? 'Check out ✓' : 'End session'}
           </button>
         </div>
       </div>

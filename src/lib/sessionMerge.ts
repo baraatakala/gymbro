@@ -95,10 +95,31 @@ export function mergeSessionsForPrefill(sessions: WorkoutSession[]): WorkoutSess
     (max, s) => Math.max(max, s.storedVolumeKg ?? 0),
     0,
   )
+
+  let startedAt: string | undefined
+  let earliestStart = Infinity
+  for (const s of sorted) {
+    if (!s.startedAt) continue
+    const t = new Date(s.startedAt).getTime()
+    if (!Number.isNaN(t) && t < earliestStart) {
+      earliestStart = t
+      startedAt = s.startedAt
+    }
+  }
+
+  const completedSession = sorted.find((s) => s.status === 'completed')
+  const finishedAt =
+    completedSession?.finishedAt ??
+    sorted.find((s) => s.finishedAt)?.finishedAt
+  const status = completedSession ? 'completed' : latest.status
+
   return {
     ...latest,
     exercises,
     exerciseSets: Object.keys(exerciseSets).length > 0 ? exerciseSets : undefined,
     storedVolumeKg: storedVolumeKg > 0 ? storedVolumeKg : latest.storedVolumeKg,
+    startedAt,
+    finishedAt,
+    status,
   }
 }

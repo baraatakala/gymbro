@@ -18,6 +18,8 @@ import { ExerciseListToolbar } from './components/workout/ExerciseListToolbar'
 import { SetupBanner } from './components/workout/SetupBanner'
 import { SectionHero } from './components/workout/SectionHero'
 import { WorkoutDock } from './components/workout/WorkoutDock'
+import { WorkoutSessionBar } from './components/workout/WorkoutSessionBar'
+import { WorkflowHelp } from './components/workout/WorkflowHelp'
 import { SectionStatsBar } from './components/workout/SectionStatsBar'
 import { calculateDayStats, compareToLast } from './lib/analytics'
 import { sessionHasLoggedExercises, sessionsLookCorrupt } from './lib/sessionMerge'
@@ -31,7 +33,12 @@ import {
   sessionsTodayOnly,
 } from './lib/sessionMerge'
 import { isCardioSection } from './lib/sectionUtils'
-import { recordLocalCheckIn } from './lib/checkIn'
+import {
+  formatSessionTime,
+  getLocalCheckIn,
+  getLocalCheckOut,
+  recordLocalCheckIn,
+} from './lib/checkIn'
 import { touchSessionCheckIn } from './lib/supabaseAttendance'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
@@ -57,6 +64,7 @@ export default function App() {
   const [expandSignal, setExpandSignal] = useState(0)
   const [expandMode, setExpandMode] = useState<'expand' | 'collapse'>('expand')
   const [exporting, setExporting] = useState(false)
+  const [workflowHelpOpen, setWorkflowHelpOpen] = useState(false)
 
   const { toast, show } = useToast()
   const timer = useTimer()
@@ -104,6 +112,24 @@ export default function App() {
     return n
   }, [planExercises, savedExercises, loggedToday])
 
+  const todayMergedSession = useMemo(
+    () => sessionsTodayOnly(workout.sessions)[0],
+    [workout.sessions],
+  )
+  const sessionCheckIn = useMemo(
+    () => todayMergedSession?.startedAt ?? getLocalCheckIn(sectionName),
+    [todayMergedSession, sectionName],
+  )
+  const sessionCheckOut = useMemo(
+    () => todayMergedSession?.finishedAt ?? getLocalCheckOut(sectionName),
+    [todayMergedSession, sectionName],
+  )
+  const sessionComplete = useMemo(
+    () =>
+      todayMergedSession?.status === 'completed' || Boolean(getLocalCheckOut(sectionName)),
+    [todayMergedSession, sectionName],
+  )
+
   const sectionRecords = useMemo(() => {
     const names = new Set(planExercises.map((e) => e.name.toLowerCase()))
     if (names.size === 0) return workout.records
@@ -144,16 +170,20 @@ export default function App() {
     })
   }, [activeDayId, loggedToday, workout.sessionsLoading])
 
-  const selectDay = useCallback((id: string, name: string) => {
-    setActiveDayId(id)
-    setDayName(name)
-    setSavedExercises(new Set())
-    setQuoteIndex((i) => i + 1)
-    setPrefillKey((k) => k + 1)
-    recordLocalCheckIn(name)
-    void touchSessionCheckIn(name)
-    timer.startWorkout()
-  }, [timer])
+  const selectDay = useCallback(
+    (id: string, name: string) => {
+      setActiveDayId(id)
+      setDayName(name)
+      setSavedExercises(new Set())
+      setQuoteIndex((i) => i + 1)
+      setPrefillKey((k) => k + 1)
+      const at = recordLocalCheckIn(name)
+      void touchSessionCheckIn(name)
+      timer.startWorkout()
+      show(`Checked in · ${name} · ${formatSessionTime(at)}`, 'info')
+    },
+    [show, timer],
+  )
 
   const saveExercise = useCallback(
     async (exerciseName: string, sets: SetEntry[]) => {
@@ -258,8 +288,12 @@ export default function App() {
   )
 
   const handleFinishWorkout = async () => {
+    if (sessionComplete) {
+      show('Session already ended for today — pick another section or come back tomorrow', 'info')
+      return
+    }
     if (savedCount === 0) {
-      show('Log at least one exercise before finishing', 'error')
+      show('Log at least one exercise before check-out', 'error')
       return
     }
     const unit = cardioMode ? 'intervals' : 'exercises'
@@ -274,11 +308,16 @@ export default function App() {
         )
         return
       }
+      await workout.reloadSessions()
+      void attendance.reload()
       if (savedCount >= planExercises.length) {
-        show(`🎉 ${sectionName} complete — all ${planExercises.length} ${unit} logged!`, 'success')
+        show(
+          `Checked out · ${sectionName} complete — all ${planExercises.length} ${unit} logged!`,
+          'success',
+        )
       } else {
         show(
-          `${sectionName} wrapped — ${savedCount}/${planExercises.length} ${unit} saved today`,
+          `Checked out · ${sectionName} — ${savedCount}/${planExercises.length} ${unit} saved today`,
           'success',
         )
       }
@@ -552,6 +591,30 @@ export default function App() {
             />
           )}
 
+          <WorkoutSessionBar
+            sectionName={sectionName}
+            checkInAt={sessionCheckIn}
+            checkOutAt={sessionCheckOut}
+            sessionComplete={sessionComplete}
+            workoutTime={timer.workoutLabel}
+            restTime={timer.restLabel}
+            isResting={timer.isResting}
+            savedCount={savedCount}
+            totalExercises={planExercises.length}
+            onFinish={handleFinishWorkout}
+            onShowWorkflow={() => setWorkflowHelpOpen(true)}
+          />
+
+          <p className="mb-3 text-center text-xs text-slate-500 lg:hidden">
+            <button
+              type="button"
+              className="underline decoration-slate-600 underline-offset-2 hover:text-slate-300"
+              onClick={() => setWorkflowHelpOpen(true)}
+            >
+              How check-in & check-out work
+            </button>
+          </p>
+
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button type="button" onClick={() => setLibraryOpen(true)} className="btn-primary w-full sm:w-auto">
               + From library ({workout.libraryStats.exercises || '…'})
@@ -571,15 +634,6 @@ export default function App() {
                 className="btn-secondary"
               >
                 Load last session
-              </button>
-            )}
-            {planExercises.length > 0 && (
-              <button
-                type="button"
-                onClick={handleFinishWorkout}
-                className="btn-secondary lg:hidden"
-              >
-                Finish workout
               </button>
             )}
           </div>
@@ -786,9 +840,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleFinishWorkout}
-                    className="btn-secondary mt-2 w-full"
+                    disabled={sessionComplete || savedCount === 0}
+                    className="btn-secondary mt-2 w-full disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Finish workout
+                    {sessionComplete ? 'Session ended ✓' : 'End session (check-out)'}
                   </button>
                 </div>
                 {sectionRecords.length > 0 && (
@@ -820,6 +875,7 @@ export default function App() {
           sectionName={sectionName}
           savedCount={savedCount}
           totalExercises={planExercises.length}
+          sessionComplete={sessionComplete}
           workoutTime={timer.workoutLabel}
           restTime={timer.restLabel}
           isResting={timer.isResting}
@@ -933,6 +989,8 @@ export default function App() {
       />
 
       <FeatureExplorer open={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
+
+      <WorkflowHelp open={workflowHelpOpen} onClose={() => setWorkflowHelpOpen(false)} />
 
       {toast && <Toast message={toast.message} tone={toast.tone} />}
         </div>

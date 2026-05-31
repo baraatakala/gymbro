@@ -17,6 +17,9 @@ export interface WorkoutSession {
   exerciseSets?: Record<string, SetEntry[]>
   /** Denormalized DB column when sets/json were lost but volume remains */
   storedVolumeKg?: number
+  startedAt?: string
+  finishedAt?: string
+  status?: string
 }
 
 export interface ExerciseCatalog {

@@ -24,6 +24,36 @@ export function getLocalCheckIn(section: string, dayKey = calendarDayKey(Date.no
 }
 
 /** Earliest browser check-in on a calendar day (any section). */
+const FINISH_PREFIX = 'gymbro_finish_'
+
+export function recordLocalCheckOut(section: string, dayKey = calendarDayKey(Date.now())): string {
+  const iso = new Date().toISOString()
+  try {
+    localStorage.setItem(`${FINISH_PREFIX}${section}_${dayKey}`, iso)
+  } catch {
+    /* ignore */
+  }
+  return iso
+}
+
+export function getLocalCheckOut(
+  section: string,
+  dayKey = calendarDayKey(Date.now()),
+): string | undefined {
+  try {
+    return localStorage.getItem(`${FINISH_PREFIX}${section}_${dayKey}`) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function formatSessionTime(iso: string | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
 export function getEarliestLocalCheckInForDay(dayKey: string): string | undefined {
   try {
     let earliest: string | undefined
