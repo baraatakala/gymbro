@@ -1,0 +1,266 @@
+import { calendarDayKey } from './dateUtils'
+import { mergeSessionsForPrefill, sessionHasMeaningfulData } from './sessionMerge'
+import {
+  DEFAULT_REPS_PER_SET,
+  type DayStats,
+  type PersonalRecord,
+  type SetEntry,
+  type SetWeights,
+  type WorkoutSession,
+} from '../types/workout'
+
+function setValues(sets: SetWeights): number[] {
+  return Object.values(sets).filter((w) => w > 0)
+}
+
+function exerciseAvgFromSets(sets: SetWeights): number {
+  const values = setValues(sets)
+  if (values.length === 0) return 0
+  return values.reduce((a, b) => a + b, 0) / values.length
+}
+
+function exerciseAvgFromEntries(entries: SetEntry[]): number {
+  const weights = entries.map((e) => e.weight).filter((w) => w > 0)
+  if (weights.length === 0) return 0
+  return weights.reduce((a, b) => a + b, 0) / weights.length
+}
+
+function sessionExerciseAvg(session: WorkoutSession, exerciseName: string): number {
+  if (session.exerciseSets?.[exerciseName]?.length) {
+    return exerciseAvgFromEntries(session.exerciseSets[exerciseName])
+  }
+  const legacy = session.exercises?.[exerciseName]
+  if (legacy) return exerciseAvgFromSets(legacy)
+  return 0
+}
+
+function sessionExerciseNames(session: WorkoutSession): string[] {
+  const names = new Set<string>()
+  Object.keys(session.exercises ?? {}).forEach((n) => names.add(n))
+  if (session.exerciseSets) Object.keys(session.exerciseSets).forEach((n) => names.add(n))
+  return [...names]
+}
+
+export function calculateVolume(sets: SetWeights, repsPerSet = DEFAULT_REPS_PER_SET): number {
+  return setValues(sets).reduce((sum, w) => sum + w * repsPerSet, 0)
+}
+
+function accumulateSessionStats(session: WorkoutSession): {
+  weightSum: number
+  setCount: number
+  totalVolume: number
+  exerciseNames: Set<string>
+} {
+  let weightSum = 0
+  let setCount = 0
+  let totalVolume = 0
+  const exerciseNames = new Set<string>()
+  const countedExercises = new Set<string>()
+
+  if (session.exerciseSets) {
+    for (const [name, entries] of Object.entries(session.exerciseSets)) {
+      countedExercises.add(name)
+      exerciseNames.add(name)
+      for (const e of entries) {
+        if (e.weight <= 0) continue
+        weightSum += e.weight
+        setCount += 1
+        totalVolume += e.weight * Math.max(1, e.reps)
+      }
+    }
+  }
+
+  for (const [name, sets] of Object.entries(session.exercises ?? {})) {
+    if (countedExercises.has(name)) continue
+    exerciseNames.add(name)
+    const values = setValues(sets)
+    for (const w of values) {
+      if (w <= 0) continue
+      weightSum += w
+      setCount += 1
+      totalVolume += w * DEFAULT_REPS_PER_SET
+    }
+  }
+
+  if (setCount === 0 && (session.storedVolumeKg ?? 0) > 0) {
+    totalVolume += session.storedVolumeKg!
+  }
+
+  return { weightSum, setCount, totalVolume, exerciseNames }
+}
+
+export function calculateDayStats(
+  sessions: WorkoutSession[],
+  options?: { cardio?: boolean },
+): DayStats {
+  if (sessions.length === 0) {
+    return {
+      totalSessions: 0,
+      avgWeight: 0,
+      totalVolume: 0,
+      improvement: null,
+      setCount: 0,
+      exerciseCount: 0,
+    }
+  }
+
+  let weightSum = 0
+  let setCount = 0
+  let totalVolume = 0
+  const uniqueExercises = new Set<string>()
+
+  for (const session of sessions) {
+    const acc = accumulateSessionStats(session)
+    weightSum += acc.weightSum
+    setCount += acc.setCount
+    totalVolume += acc.totalVolume
+    acc.exerciseNames.forEach((n) => uniqueExercises.add(n))
+  }
+
+  const ordered = [...sessions].sort((a, b) => b.timestamp - a.timestamp)
+
+  let improvement: number | null = null
+  if (ordered.length >= 2) {
+    const oldest = ordered[ordered.length - 1]
+    const newest = ordered[0]
+    let firstSum = 0
+    let lastSum = 0
+    let common = 0
+
+    const names = new Set([...sessionExerciseNames(oldest), ...sessionExerciseNames(newest)])
+    for (const name of names) {
+      const oldAvg = sessionExerciseAvg(oldest, name)
+      const newAvg = sessionExerciseAvg(newest, name)
+      if (oldAvg <= 0 || newAvg <= 0) continue
+      firstSum += oldAvg
+      lastSum += newAvg
+      common++
+    }
+
+    if (common > 0) {
+      const firstMean = firstSum / common
+      const lastMean = lastSum / common
+      if (firstMean > 0) {
+        improvement = Number((((lastMean - firstMean) / firstMean) * 100).toFixed(1))
+      }
+    }
+  }
+
+  return {
+    totalSessions: countDistinctSessionDays(sessions),
+    avgWeight: setCount > 0 ? Number((weightSum / setCount).toFixed(1)) : 0,
+    totalVolume: Math.round(totalVolume),
+    improvement: options?.cardio ? null : improvement,
+    setCount,
+    exerciseCount: uniqueExercises.size,
+  }
+}
+
+/** @deprecated Use exercisesLoggedToday from sessionMerge */
+export function exercisesInLatestSession(sessions: WorkoutSession[]): Set<string> {
+  const merged = mergeSessionsForPrefill(sessions)
+  if (!merged) return new Set()
+  const names = new Set<string>()
+  for (const name of Object.keys(merged.exercises ?? {})) names.add(name)
+  if (merged.exerciseSets) {
+    for (const name of Object.keys(merged.exerciseSets)) names.add(name)
+  }
+  return names
+}
+
+/** Distinct calendar days with logged work (not raw session row count). */
+export function countDistinctSessionDays(sessions: WorkoutSession[]): number {
+  if (sessions.length === 0) return 0
+  const keys = new Set<string>()
+  for (const s of sessions) {
+    if (!sessionHasMeaningfulData(s)) continue
+    keys.add(calendarDayKey(s.timestamp))
+  }
+  return keys.size
+}
+
+export function calculatePersonalRecords(sessions: WorkoutSession[]): PersonalRecord[] {
+  const map = new Map<string, PersonalRecord>()
+
+  for (const session of sessions) {
+    if (session.exerciseSets) {
+      for (const [exercise, entries] of Object.entries(session.exerciseSets)) {
+        for (const entry of entries) {
+          const current = map.get(exercise)
+          if (
+            !current ||
+            entry.weight > current.weight ||
+            (entry.weight === current.weight &&
+              (entry.reps ?? 0) > (current.reps ?? 0))
+          ) {
+            map.set(exercise, {
+              exercise,
+              weight: entry.weight,
+              reps: entry.reps,
+              date: session.timestamp,
+              set: 'PR',
+            })
+          }
+        }
+      }
+    }
+    for (const [exercise, sets] of Object.entries(session.exercises ?? {})) {
+      for (const [setName, weight] of Object.entries(sets)) {
+        const current = map.get(exercise)
+        if (!current || weight > current.weight) {
+          map.set(exercise, {
+            exercise,
+            weight,
+            date: session.timestamp,
+            set: setName,
+          })
+        }
+      }
+    }
+  }
+
+  return [...map.values()].sort((a, b) => b.weight - a.weight)
+}
+
+function isBetterRecord(a: PersonalRecord, b: PersonalRecord): boolean {
+  if (a.weight > b.weight) return true
+  if (a.weight < b.weight) return false
+  return (a.reps ?? 0) > (b.reps ?? 0)
+}
+
+/** Cloud PRs plus session-derived PRs (whichever is best per exercise). */
+export function mergePersonalRecordSources(
+  cloud: PersonalRecord[],
+  sessions: WorkoutSession[],
+): PersonalRecord[] {
+  const map = new Map<string, PersonalRecord>()
+  for (const r of [...calculatePersonalRecords(sessions), ...cloud]) {
+    const prev = map.get(r.exercise)
+    if (!prev || isBetterRecord(r, prev)) map.set(r.exercise, r)
+  }
+  return [...map.values()].sort((a, b) => b.weight - a.weight)
+}
+
+export function compareToLast(
+  _exercise: string,
+  current: number[],
+  lastSets?: SetWeights,
+  lastEntries?: SetEntry[],
+  options?: { cardio?: boolean },
+): string {
+  let lastAvg = 0
+  if (lastEntries?.length) {
+    const weights = lastEntries.map((e) => e.weight).filter((w) => w > 0)
+    if (weights.length) lastAvg = weights.reduce((a, b) => a + b, 0) / weights.length
+  } else if (lastSets) {
+    lastAvg = exerciseAvgFromSets(lastSets)
+  }
+  if (lastAvg <= 0) return ''
+  const currentAvg = current.reduce((a, b) => a + b, 0) / current.length
+  if (currentAvg <= 0) return ''
+  const diff = currentAvg - lastAvg
+  const unit = options?.cardio ? 'min' : 'kg'
+  if (diff > 0) return `(+${diff.toFixed(1)} ${unit} vs last)`
+  if (diff < 0) return `(${diff.toFixed(1)} ${unit} vs last)`
+  return '(same as last)'
+}

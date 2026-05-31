@@ -1,0 +1,13 @@
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+
+# Editor / local tooling (not part of the app)
+.agents/
+.cursor/
+skills-lock.json
+supabase/.temp/

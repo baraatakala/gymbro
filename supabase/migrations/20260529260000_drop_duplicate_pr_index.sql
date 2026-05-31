@@ -1,0 +1,2 @@
+-- Duplicate of personal_records_user_exercise_unique / personal_records_user_exercise_unique constraint
+DROP INDEX IF EXISTS public.personal_records_user_exercise_idx;
