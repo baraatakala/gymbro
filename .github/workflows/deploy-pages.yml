@@ -47,6 +47,15 @@ jobs:
         with:
           path: dist
 
+      # Fallback: publish built dist to gh-pages branch (use if Pages source is not GitHub Actions)
+      - name: Publish gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
