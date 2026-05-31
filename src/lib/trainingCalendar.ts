@@ -1,4 +1,4 @@
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 
 /** `trained_on` values from DB (YYYY-MM-DD). */
 export function computeTrainingStreak(trainedDates: string[]): {
@@ -11,7 +11,7 @@ export function computeTrainingStreak(trainedDates: string[]): {
   }
 
   const set = new Set(trainedDates)
-  const todayKey = calendarDayKey(Date.now())
+  const todayKey = gymDayKey(Date.now())
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -20,7 +20,7 @@ export function computeTrainingStreak(trainedDates: string[]): {
   for (let i = startOffset; i < 365; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    if (set.has(calendarDayKey(d.getTime()))) current++
+    if (set.has(gymDayKey(d.getTime()))) current++
     else break
   }
 
@@ -44,7 +44,7 @@ export function computeTrainingStreak(trainedDates: string[]): {
   for (let i = 0; i < 28; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    if (set.has(calendarDayKey(d.getTime()))) last28++
+    if (set.has(gymDayKey(d.getTime()))) last28++
   }
 
   return { current, longest, last28 }
@@ -58,7 +58,7 @@ export function buildCalendarCells(daysBack = 27): { key: string; weekday: strin
     const d = new Date(today)
     d.setDate(d.getDate() - i)
     cells.push({
-      key: calendarDayKey(d.getTime()),
+      key: gymDayKey(d.getTime()),
       weekday: d.toLocaleDateString('en-GB', { weekday: 'narrow' }),
     })
   }

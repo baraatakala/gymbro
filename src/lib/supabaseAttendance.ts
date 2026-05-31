@@ -1,5 +1,3 @@
-import { getLocalCheckIn, recordLocalCheckIn } from './checkIn'
-import { isSessionOnLocalToday } from './dateUtils'
 import { getAllSessions } from './storage'
 import { isSupabaseConfigured, supabase } from './supabase'
 import { tryEnsureSupabaseUser } from './supabaseAuth'
@@ -65,49 +63,10 @@ function mapRow(row: RawRow): AttendanceSession {
   }
 }
 
-/** Mark gym check-in for today's section (earliest started_at wins). */
+/** @deprecated Use startWorkoutSession from activeSession.ts */
 export async function touchSessionCheckIn(section: string): Promise<void> {
-  recordLocalCheckIn(section)
-  if (!supabase || !isSupabaseConfigured) return
-  const auth = await tryEnsureSupabaseUser()
-  if (!auth.ok) return
-
-  const nowIso = new Date().toISOString()
-  const { data: rows } = await supabase
-    .from('workout_sessions')
-    .select('id, started_at, timestamp')
-    .eq('user_id', auth.userId)
-    .eq('day', section)
-
-  const todayRows = (rows ?? []).filter((r) =>
-    isSessionOnLocalToday(Number(r.timestamp)),
-  )
-
-  if (todayRows.length === 0) {
-    const checkInAt = getLocalCheckIn(section) ?? nowIso
-    const timestamp = Date.now()
-    await supabase.from('workout_sessions').insert({
-      storage_key: `${section}_${timestamp}`,
-      day: section,
-      timestamp,
-      save_time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
-      save_date: new Date().toLocaleDateString('en-GB'),
-      exercises: {},
-      user_id: auth.userId,
-      started_at: checkInAt,
-      status: 'in_progress',
-    })
-    return
-  }
-
-  for (const row of todayRows) {
-    if (row.started_at) continue
-    await supabase
-      .from('workout_sessions')
-      .update({ started_at: nowIso, status: 'in_progress' })
-      .eq('id', row.id as string)
-      .is('started_at', null)
-  }
+  const { startWorkoutSession } = await import('./activeSession')
+  await startWorkoutSession(section)
 }
 
 export async function fetchAttendanceSessions(lookbackDays = 400): Promise<AttendanceSession[]> {

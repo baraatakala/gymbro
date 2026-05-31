@@ -1,9 +1,9 @@
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 
 const PREFIX = 'gymbro_checkin_'
 
 export function recordLocalCheckIn(section: string): string {
-  const key = `${PREFIX}${section}_${calendarDayKey(Date.now())}`
+  const key = `${PREFIX}${section}_${gymDayKey(Date.now())}`
   const existing = localStorage.getItem(key)
   if (existing) return existing
   const iso = new Date().toISOString()
@@ -15,7 +15,7 @@ export function recordLocalCheckIn(section: string): string {
   return iso
 }
 
-export function getLocalCheckIn(section: string, dayKey = calendarDayKey(Date.now())): string | undefined {
+export function getLocalCheckIn(section: string, dayKey = gymDayKey(Date.now())): string | undefined {
   try {
     return localStorage.getItem(`${PREFIX}${section}_${dayKey}`) ?? undefined
   } catch {
@@ -26,7 +26,7 @@ export function getLocalCheckIn(section: string, dayKey = calendarDayKey(Date.no
 /** Earliest browser check-in on a calendar day (any section). */
 const FINISH_PREFIX = 'gymbro_finish_'
 
-export function recordLocalCheckOut(section: string, dayKey = calendarDayKey(Date.now())): string {
+export function recordLocalCheckOut(section: string, dayKey = gymDayKey(Date.now())): string {
   const iso = new Date().toISOString()
   try {
     localStorage.setItem(`${FINISH_PREFIX}${section}_${dayKey}`, iso)
@@ -38,7 +38,7 @@ export function recordLocalCheckOut(section: string, dayKey = calendarDayKey(Dat
 
 export function getLocalCheckOut(
   section: string,
-  dayKey = calendarDayKey(Date.now()),
+  dayKey = gymDayKey(Date.now()),
 ): string | undefined {
   try {
     return localStorage.getItem(`${FINISH_PREFIX}${section}_${dayKey}`) ?? undefined

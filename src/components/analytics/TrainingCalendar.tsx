@@ -1,5 +1,5 @@
 import { buildCalendarCells, computeTrainingStreak } from '../../lib/trainingCalendar'
-import { calendarDayKey } from '../../lib/dateUtils'
+import { gymDayKey } from '../../lib/dateUtils'
 
 interface TrainingCalendarProps {
   trainedDates: string[]
@@ -12,7 +12,7 @@ export function TrainingCalendar({
 }: TrainingCalendarProps) {
   const trained = new Set(trainedDates)
   const cells = buildCalendarCells(27)
-  const todayKey = calendarDayKey(Date.now())
+  const todayKey = gymDayKey(Date.now())
   const streak = computeTrainingStreak(trainedDates)
 
   return (

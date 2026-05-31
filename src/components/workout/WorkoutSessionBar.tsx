@@ -7,14 +7,15 @@ interface WorkoutSessionBarProps {
   checkInAt?: string
   checkOutAt?: string
   sessionComplete?: boolean
+  workoutInProgress?: boolean
   workoutTime: string
   restTime: string
   isResting: boolean
   savedCount: number
   totalExercises: number
+  onStartWorkout: () => void
   onFinish: () => void
   onShowWorkflow: () => void
-  /** Insights-style active visit (set-based), when session ended */
   activeVisitMinutes?: number | null
 }
 
@@ -23,11 +24,13 @@ export function WorkoutSessionBar({
   checkInAt,
   checkOutAt,
   sessionComplete,
+  workoutInProgress = false,
   workoutTime,
   restTime,
   isResting,
   savedCount,
   totalExercises,
+  onStartWorkout,
   onFinish,
   onShowWorkflow,
   activeVisitMinutes,
@@ -83,16 +86,20 @@ export function WorkoutSessionBar({
           <div>
             <p className="text-[10px] uppercase tracking-wide text-slate-500">Check-in</p>
             <p className="font-mono font-medium text-emerald-300">
-              {formatSessionTime(checkInAt)}
+              {workoutInProgress || sessionComplete
+                ? formatSessionTime(checkInAt)
+                : '—'}
             </p>
-            <p className="text-[10px] text-slate-500">Pick a section or save a set</p>
+            <p className="text-[10px] text-slate-500">
+              {workoutInProgress ? 'Session active' : 'Start workout or save a set'}
+            </p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-slate-500">Check-out</p>
             <p className="font-mono font-medium text-slate-200">
               {sessionComplete ? formatSessionTime(checkOutAt) : '—'}
             </p>
-            <p className="text-[10px] text-slate-500">End session when you leave</p>
+            <p className="text-[10px] text-slate-500">End when you leave the gym</p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -126,14 +133,18 @@ export function WorkoutSessionBar({
             <span className="rounded-xl border border-emerald-800/60 bg-emerald-950/40 px-4 py-2 text-sm font-semibold text-emerald-300">
               Session ended ✓
             </span>
-          ) : (
+          ) : workoutInProgress ? (
             <button
               type="button"
               onClick={onFinish}
               disabled={!canFinish}
               className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
-              End session (check-out)
+              {canFinish ? 'End workout' : 'Save a set to end'}
+            </button>
+          ) : (
+            <button type="button" onClick={onStartWorkout} className="btn-primary">
+              Start workout
             </button>
           )}
         </div>

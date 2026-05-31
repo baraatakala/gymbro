@@ -5,9 +5,11 @@ interface WorkoutDockProps {
   savedCount: number
   totalExercises: number
   sessionComplete?: boolean
+  workoutInProgress?: boolean
   workoutTime: string
   restTime: string
   isResting: boolean
+  onStartWorkout: () => void
   onFinish: () => void
   onAddExercise: () => void
   onOpenAnalytics: () => void
@@ -18,9 +20,11 @@ export function WorkoutDock({
   savedCount,
   totalExercises,
   sessionComplete = false,
+  workoutInProgress = false,
   workoutTime,
   restTime,
   isResting,
+  onStartWorkout,
   onFinish,
   onAddExercise,
   onOpenAnalytics,
@@ -33,6 +37,24 @@ export function WorkoutDock({
   const canFinish = savedCount > 0 && !sessionComplete
   const circumference = 2 * Math.PI * 18
   const offset = circumference - (pct / 100) * circumference
+
+  const primaryLabel = sessionComplete
+    ? 'Session ended ✓'
+    : workoutInProgress
+      ? complete
+        ? 'End workout — section complete'
+        : canFinish
+          ? 'End workout'
+          : 'Save a set to end'
+      : 'Start workout'
+
+  const primaryAction = sessionComplete
+    ? undefined
+    : workoutInProgress
+      ? onFinish
+      : onStartWorkout
+
+  const primaryDisabled = sessionComplete || (workoutInProgress && !canFinish)
 
   return (
     <div className="workout-dock lg:hidden" role="region" aria-label="Active workout">
@@ -63,10 +85,14 @@ export function WorkoutDock({
             <p className="text-xs text-slate-400">
               {savedCount}/{totalExercises} saved
               <span className="mx-1 text-slate-600">·</span>
-              {isResting ? (
-                <span className="font-medium text-amber-400">Rest {restTime}</span>
+              {workoutInProgress ? (
+                isResting ? (
+                  <span className="font-medium text-amber-400">Rest {restTime}</span>
+                ) : (
+                  <span className="text-slate-300">{workoutTime}</span>
+                )
               ) : (
-                <span className="text-slate-300">{workoutTime}</span>
+                <span className="text-slate-500">Tap Start when you arrive</span>
               )}
             </p>
           </div>
@@ -74,19 +100,13 @@ export function WorkoutDock({
 
         <button
           type="button"
-          onClick={onFinish}
-          disabled={!canFinish && !sessionComplete}
+          onClick={primaryAction}
+          disabled={primaryDisabled}
           className={`workout-dock-primary w-full ${
             sessionComplete ? 'workout-dock-primary--done' : ''
           }`}
         >
-          {sessionComplete
-            ? 'Session ended ✓'
-            : complete
-              ? 'Check out — section complete'
-              : canFinish
-                ? 'End session (check-out)'
-                : 'Save a set to check out'}
+          {primaryLabel}
         </button>
 
         <div className="flex justify-center gap-2">

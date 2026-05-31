@@ -1,4 +1,4 @@
-import { calendarDayKey, isSessionOnLocalToday } from './dateUtils'
+import { gymDayKey, isSessionOnLocalToday } from './dateUtils'
 import type { SetEntry, SetWeights, WorkoutSession } from '../types/workout'
 
 export function sessionHasLoggedExercises(session: WorkoutSession): boolean {
@@ -53,7 +53,7 @@ export function collapseSessionsByDay(sessions: WorkoutSession[]): WorkoutSessio
   if (sessions.length === 0) return []
   const byDay = new Map<string, WorkoutSession[]>()
   for (const s of sessions) {
-    const key = calendarDayKey(s.timestamp)
+    const key = gymDayKey(s.timestamp)
     const group = byDay.get(key) ?? []
     group.push(s)
     byDay.set(key, group)

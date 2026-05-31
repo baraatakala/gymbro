@@ -35,6 +35,12 @@ export function useTimer() {
     setWorkoutStart((prev) => prev ?? Date.now())
   }, [])
 
+  /** Resume timer from DB check-in (refresh / multi-tab). */
+  const syncWorkoutStart = useCallback((startedAtMs: number) => {
+    if (!Number.isFinite(startedAtMs)) return
+    setWorkoutStart((prev) => (prev == null || startedAtMs < prev ? startedAtMs : prev))
+  }, [])
+
   const startRest = useCallback((seconds = 90, meta?: RestMeta) => {
     const startedAt = Date.now()
     restMetaRef.current = meta
@@ -74,6 +80,7 @@ export function useTimer() {
     restLabel: restEnd ? formatDuration(restRemaining) : '00:00',
     isResting: restEnd !== null && restRemaining > 0,
     startWorkout,
+    syncWorkoutStart,
     startRest,
     stopRest,
   }

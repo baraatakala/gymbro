@@ -1,4 +1,4 @@
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import { collectGymDayKeys, parseRange } from './attendanceAnalytics'
 import type { AttendanceReport, AttendanceSession, DateRange } from '../types/attendance'
 
@@ -140,7 +140,7 @@ export function buildGymDayRows(
 
   for (const day of days) {
     const daySessions = sessions.filter((s) => {
-      const k = calendarDayKey(s.timestamp)
+      const k = gymDayKey(s.timestamp)
       return k === day && s.sets.length > 0
     })
     const sections = [...new Set(daySessions.map((s) => s.section))]

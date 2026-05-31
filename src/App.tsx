@@ -19,6 +19,7 @@ import { SetupBanner } from './components/workout/SetupBanner'
 import { SectionHero } from './components/workout/SectionHero'
 import { WorkoutDock } from './components/workout/WorkoutDock'
 import { WorkoutSessionBar } from './components/workout/WorkoutSessionBar'
+import { ActiveSessionPrompt } from './components/workout/ActiveSessionPrompt'
 import { WorkflowHelp } from './components/workout/WorkflowHelp'
 import { SectionStatsBar } from './components/workout/SectionStatsBar'
 import { calculateDayStats, compareToLast } from './lib/analytics'
@@ -39,9 +40,9 @@ import {
   getLocalCheckOut,
   recordLocalCheckIn,
 } from './lib/checkIn'
-import { touchSessionCheckIn } from './lib/supabaseAttendance'
+import { useActiveSession } from './hooks/useActiveSession'
 import { computeVisitDurationMinutes } from './lib/attendanceAnalytics'
-import { calendarDayKey } from './lib/dateUtils'
+import { gymDayKey } from './lib/dateUtils'
 import { computeTrainingStreak } from './lib/trainingCalendar'
 import type { SetEntry } from './types/workout'
 import { useAttendanceData } from './hooks/useAttendanceData'
@@ -67,11 +68,14 @@ export default function App() {
   const [expandMode, setExpandMode] = useState<'expand' | 'collapse'>('expand')
   const [exporting, setExporting] = useState(false)
   const [workflowHelpOpen, setWorkflowHelpOpen] = useState(false)
+  const [resumePromptOpen, setResumePromptOpen] = useState(false)
+  const [sessionBusy, setSessionBusy] = useState(false)
 
   const { toast, show } = useToast()
   const timer = useTimer()
   const cloud = useSupabase()
   const workout = useWorkoutData(activeDayId, dayName)
+  const sessionCloud = useActiveSession(cloud.status === 'connected')
 
   const activeDay = workout.activeDay
   const sectionName = workout.sectionName
@@ -118,18 +122,37 @@ export default function App() {
     () => sessionsTodayOnly(workout.sessions)[0],
     [workout.sessions],
   )
-  const sessionCheckIn = useMemo(
-    () => todayMergedSession?.startedAt ?? getLocalCheckIn(sectionName),
-    [todayMergedSession, sectionName],
-  )
+  const sessionCheckIn = useMemo(() => {
+    if (sessionCloud.active?.section === sectionName) {
+      return sessionCloud.active.startedAt
+    }
+    return todayMergedSession?.startedAt ?? getLocalCheckIn(sectionName)
+  }, [sessionCloud.active, todayMergedSession, sectionName])
   const sessionCheckOut = useMemo(
     () => todayMergedSession?.finishedAt ?? getLocalCheckOut(sectionName),
     [todayMergedSession, sectionName],
   )
-  const sessionComplete = useMemo(
+  const sessionComplete = useMemo(() => {
+    if (sessionCloud.active?.section === sectionName) return false
+    return (
+      todayMergedSession?.status === 'completed' || Boolean(getLocalCheckOut(sectionName))
+    )
+  }, [sessionCloud.active, todayMergedSession, sectionName])
+
+  const workoutInProgress = useMemo(
     () =>
-      todayMergedSession?.status === 'completed' || Boolean(getLocalCheckOut(sectionName)),
-    [todayMergedSession, sectionName],
+      !sessionComplete &&
+      (sessionCloud.active?.section === sectionName ||
+        Boolean(sessionCheckIn && !sessionCheckOut) ||
+        todayMergedSession?.status === 'in_progress'),
+    [
+      sessionComplete,
+      sessionCloud.active,
+      sectionName,
+      sessionCheckIn,
+      sessionCheckOut,
+      todayMergedSession,
+    ],
   )
 
   const sectionRecords = useMemo(() => {
@@ -140,7 +163,7 @@ export default function App() {
 
   const trainingDatesMerged = useMemo(() => {
     const fromSessions = collapseSessionsByDay(workout.sessions).map((s) =>
-      calendarDayKey(s.timestamp),
+      gymDayKey(s.timestamp),
     )
     return [...new Set([...workout.trainingCalendarDates, ...fromSessions])].sort()
   }, [workout.trainingCalendarDates, workout.sessions])
@@ -179,6 +202,57 @@ export default function App() {
     })
   }, [activeDayId, loggedToday, workout.sessionsLoading])
 
+  useEffect(() => {
+    const active = sessionCloud.active
+    if (!active || active.section !== sectionName) return
+    timer.syncWorkoutStart(new Date(active.startedAt).getTime())
+  }, [sessionCloud.active?.id, sectionName, timer])
+
+  useEffect(() => {
+    if (sessionCloud.staleClosed > 0) {
+      show(
+        `Auto-closed ${sessionCloud.staleClosed} session(s) open longer than 6 hours`,
+        'info',
+      )
+    }
+  }, [sessionCloud.staleClosed, show])
+
+  useEffect(() => {
+    if (sessionCloud.loading || !sessionCloud.active) {
+      setResumePromptOpen(false)
+      return
+    }
+    if (sessionCloud.active.section !== sectionName) {
+      setResumePromptOpen(true)
+    } else {
+      setResumePromptOpen(false)
+    }
+  }, [sessionCloud.active, sessionCloud.loading, sectionName])
+
+  const checkInSection = useCallback(
+    async (name: string): Promise<'ok' | 'conflict' | 'offline'> => {
+      const at = recordLocalCheckIn(name)
+      const result = await sessionCloud.beginSection(name)
+      if (result.status === 'ok') {
+        timer.syncWorkoutStart(new Date(result.session.startedAt).getTime())
+        timer.startWorkout()
+        show(`Checked in · ${name} · ${formatSessionTime(at)}`, 'info')
+        return 'ok'
+      }
+      if (result.status === 'conflict') {
+        show('You already have an open session on another section', 'info')
+        return 'conflict'
+      }
+      timer.startWorkout()
+      return 'offline'
+    },
+    [sessionCloud, show, timer],
+  )
+
+  const handleStartWorkout = useCallback(() => {
+    void checkInSection(sectionName)
+  }, [checkInSection, sectionName])
+
   const selectDay = useCallback(
     (id: string, name: string) => {
       setActiveDayId(id)
@@ -186,19 +260,15 @@ export default function App() {
       setSavedExercises(new Set())
       setQuoteIndex((i) => i + 1)
       setPrefillKey((k) => k + 1)
-      const at = recordLocalCheckIn(name)
-      void touchSessionCheckIn(name)
-      timer.startWorkout()
-      show(`Checked in · ${name} · ${formatSessionTime(at)}`, 'info')
+      void checkInSection(name)
     },
-    [show, timer],
+    [checkInSection],
   )
 
   const saveExercise = useCallback(
     async (exerciseName: string, sets: SetEntry[]) => {
-      recordLocalCheckIn(sectionName)
-      void touchSessionCheckIn(sectionName)
-      timer.startWorkout()
+      const checkIn = await checkInSection(sectionName)
+      if (checkIn === 'conflict') return
       setSavingExercise(exerciseName)
       try {
         const result = await workout.saveExercise(exerciseName, sets)
@@ -230,7 +300,7 @@ export default function App() {
         setSavingExercise(null)
       }
     },
-    [cardioMode, previousSession, show, timer, workout],
+    [cardioMode, checkInSection, previousSession, sectionName, show, workout],
   )
 
   const handleInitPlan = async () => {
@@ -318,6 +388,7 @@ export default function App() {
         return
       }
       await workout.reloadSessions()
+      await sessionCloud.refresh()
       void attendance.reload()
       if (savedCount >= planExercises.length) {
         show(
@@ -358,9 +429,9 @@ export default function App() {
   )
 
   const todayActiveVisitMinutes = useMemo(() => {
-    const dayKey = calendarDayKey(Date.now())
+    const dayKey = gymDayKey(Date.now())
     const daySessions = attendance.sessions.filter(
-      (s) => calendarDayKey(s.timestamp) === dayKey,
+      (s) => gymDayKey(s.timestamp) === dayKey,
     )
     if (daySessions.length === 0) return null
     return computeVisitDurationMinutes(dayKey, daySessions)
@@ -380,6 +451,13 @@ export default function App() {
   useEffect(() => {
     if (hasPlan && appView === 'insights') void attendance.reload()
   }, [appView, hasPlan, attendance.reload])
+
+  const activeSessionConflict =
+    sessionCloud.pendingConflict ??
+    (resumePromptOpen ? sessionCloud.active : null)
+  const showActiveSessionPrompt = Boolean(
+    activeSessionConflict && activeSessionConflict.section !== sectionName,
+  )
 
   return (
     <>
@@ -621,11 +699,13 @@ export default function App() {
             checkInAt={sessionCheckIn}
             checkOutAt={sessionCheckOut}
             sessionComplete={sessionComplete}
+            workoutInProgress={workoutInProgress}
             workoutTime={timer.workoutLabel}
             restTime={timer.restLabel}
             isResting={timer.isResting}
             savedCount={savedCount}
             totalExercises={planExercises.length}
+            onStartWorkout={handleStartWorkout}
             onFinish={handleFinishWorkout}
             onShowWorkflow={() => setWorkflowHelpOpen(true)}
             activeVisitMinutes={todayActiveVisitMinutes}
@@ -909,9 +989,11 @@ export default function App() {
           savedCount={savedCount}
           totalExercises={planExercises.length}
           sessionComplete={sessionComplete}
+          workoutInProgress={workoutInProgress}
           workoutTime={timer.workoutLabel}
           restTime={timer.restLabel}
           isResting={timer.isResting}
+          onStartWorkout={handleStartWorkout}
           onFinish={handleFinishWorkout}
           onAddExercise={() => setLibraryOpen(true)}
           onOpenAnalytics={() => setAnalyticsOpen(true)}
@@ -1024,6 +1106,49 @@ export default function App() {
       <FeatureExplorer open={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
 
       <WorkflowHelp open={workflowHelpOpen} onClose={() => setWorkflowHelpOpen(false)} />
+
+      <ActiveSessionPrompt
+        open={showActiveSessionPrompt}
+        existing={activeSessionConflict}
+        targetSection={sectionName}
+        busy={sessionBusy}
+        onCancel={() => {
+          sessionCloud.dismissConflict()
+          setResumePromptOpen(false)
+        }}
+        onContinuePrevious={() => {
+          const ex = activeSessionConflict
+          if (!ex) return
+          const day = workout.plan.days.find((d) => d.name === ex.section)
+          if (day) {
+            setActiveDayId(day.id)
+            setDayName(day.name)
+            setSavedExercises(new Set())
+            timer.syncWorkoutStart(new Date(ex.startedAt).getTime())
+          }
+          sessionCloud.dismissConflict()
+          setResumePromptOpen(false)
+        }}
+        onEndPrevious={() => {
+          const ex = activeSessionConflict
+          if (!ex) return
+          setSessionBusy(true)
+          void sessionCloud
+            .endOtherAndBegin(ex, sectionName)
+            .then((ok) => {
+              if (ok) {
+                const started = sessionCloud.active?.startedAt
+                if (started) {
+                  timer.syncWorkoutStart(new Date(started).getTime())
+                }
+                timer.startWorkout()
+                show(`Checked in · ${sectionName}`, 'info')
+              }
+              setResumePromptOpen(false)
+            })
+            .finally(() => setSessionBusy(false))
+        }}
+      />
 
       {toast && <Toast message={toast.message} tone={toast.tone} />}
         </div>

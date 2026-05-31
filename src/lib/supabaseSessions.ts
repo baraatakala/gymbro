@@ -2,7 +2,7 @@ import { validateSetEntries } from './validators'
 import { getAllSessions, getWorkoutStorageKeys } from './storage'
 import { mergeSessionsForPrefill } from './sessionMerge'
 import { isCardioSection } from './sectionUtils'
-import { getLocalCheckIn, recordLocalCheckOut } from './checkIn'
+import { getLocalCheckIn } from './checkIn'
 import { calendarDayKey, isSessionOnLocalToday } from './dateUtils'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { ensureSupabaseUser, tryEnsureSupabaseUser } from './supabaseAuth'
@@ -1004,52 +1004,10 @@ export async function renameExerciseInWorkoutHistory(
   if (prError) throw prError
 }
 
-/** Mark today's session for a section as completed. Returns false if nothing was updated. */
+/** Mark today's active session for a section as completed. Returns false if nothing was updated. */
 export async function finishWorkoutForDay(day: string): Promise<boolean> {
-  if (!supabase) throw new Error('Supabase not configured')
-
-  const userId = await ensureSupabaseUser()
-  if (!userId) throw new Error('Not signed in')
-
-  const now = new Date()
-  const nowIso = now.toISOString()
-
-  const { data: rows, error: listError } = await supabase
-    .from('workout_sessions')
-    .select('id, timestamp')
-    .eq('user_id', userId)
-    .eq('day', day)
-
-  if (listError) throw listError
-
-  const todayIds = (rows ?? [])
-    .filter((r) => isSessionOnLocalToday(Number(r.timestamp)))
-    .map((r) => r.id as string)
-
-  if (todayIds.length === 0) return false
-
-  const checkInAt = getLocalCheckIn(day)
-
-  const { data: updated, error } = await supabase
-    .from('workout_sessions')
-    .update({ status: 'completed', finished_at: nowIso })
-    .in('id', todayIds)
-    .select('id')
-
-  if (error) throw error
-  if (!updated?.length) return false
-
-  if (checkInAt) {
-    await supabase
-      .from('workout_sessions')
-      .update({ started_at: checkInAt })
-      .in('id', todayIds)
-      .is('started_at', null)
-  }
-
-  recordLocalCheckOut(day)
-
-  return true
+  const { completeActiveSession } = await import('./activeSession')
+  return completeActiveSession(day)
 }
 
 export async function fetchPersonalRecords(): Promise<PersonalRecord[]> {

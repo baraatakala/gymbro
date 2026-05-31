@@ -4,9 +4,7 @@ This is the product flow users should follow. The app implements it automaticall
 
 ## Check-in (start)
 
-**There is no separate “Check in” button.**
-
-Check-in happens when you:
+Use **Start workout** on the session bar (desktop) or dock (mobile), or check in automatically when you:
 
 1. Select a **section** (Chest, Back, …) in the section rail or day manager, or  
 2. **Save** your first exercise for that section today.
@@ -23,7 +21,7 @@ If you are online, selecting a section also creates an empty `workout_sessions` 
 
 ## Check-out (end)
 
-**End session** / **Finish workout** (mobile dock) = check-out.
+**End workout** (same button area toggles from Start → End) = check-out.
 
 Requirements:
 
@@ -48,6 +46,20 @@ This sets `finished_at` and `status: completed` in Supabase (or local checkout t
 - **Settings → Export** — full JSON backup or sets/PR CSV.
 
 See also [ATTENDANCE.md](./ATTENDANCE.md).
+
+## Edge cases (handled in DB + app)
+
+| Situation | Behavior |
+|-----------|----------|
+| Forgot check-out | Sessions open **> 6 hours** auto-close via `auto_close_stale_workout_sessions` on load |
+| Double check-in | **One** `in_progress` row per user (partial unique index); second insert blocked |
+| Refresh / new tab | App loads active session from Supabase and resumes the timer from `started_at` |
+| Open session on another section | Prompt: end previous & start new, or go back to the open section |
+| Duration | Set-based active time + caps; UI timer is display only |
+| Night training (e.g. Mon 23:50 → Tue 00:10) | **Gym day** uses a **4:00 AM** local cutoff for streaks and “today” |
+| Fake averages | Visits under 2 min or over 4 h excluded from **avg visit** in Insights |
+
+Active status in the database is `in_progress` (not a separate `active` enum value).
 
 ## Verify locally
 

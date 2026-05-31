@@ -1,4 +1,4 @@
-import { calendarDayKey } from './dateUtils'
+import { gymDayKey } from './dateUtils'
 import { getEarliestLocalCheckInForDay } from './checkIn'
 import { computeTrainingStreak } from './trainingCalendar'
 import { getRestEventsInRange } from './restEventLog'
@@ -62,7 +62,7 @@ export function collectGymDayKeys(
     if (inRange(d, range)) keys.add(d)
   }
   for (const s of sessions) {
-    const k = calendarDayKey(s.timestamp)
+    const k = gymDayKey(s.timestamp)
     if (inRange(k, range) && s.sets.length > 0) keys.add(k)
   }
   return [...keys].sort()
@@ -76,7 +76,7 @@ export function allTrainingDayKeys(
   const keys = new Set<string>()
   for (const d of trainedDates) keys.add(d)
   for (const s of sessions) {
-    if (s.sets.length > 0) keys.add(calendarDayKey(s.timestamp))
+    if (s.sets.length > 0) keys.add(gymDayKey(s.timestamp))
   }
   return [...keys].sort()
 }
@@ -87,7 +87,7 @@ function groupSessionsByGymDay(
 ): Map<string, AttendanceSession[]> {
   const map = new Map<string, AttendanceSession[]>()
   for (const s of sessions) {
-    const k = calendarDayKey(s.timestamp)
+    const k = gymDayKey(s.timestamp)
     if (!inRange(k, range) || s.sets.length === 0) continue
     const list = map.get(k) ?? []
     list.push(s)
@@ -109,6 +109,13 @@ function daySetTimes(daySessions: AttendanceSession[]): number[] {
 
 /** Max believable gym visit; longer spans use set-based active time instead of raw check-out. */
 const MAX_VISIT_MINUTES = 180
+/** Exclude from average visit duration (outliers / stale auto-close). */
+const MIN_MINUTES_FOR_AVG = 2
+const MAX_MINUTES_FOR_AVG = 240
+
+export function includeVisitInAverage(minutes: number): boolean {
+  return minutes >= MIN_MINUTES_FOR_AVG && minutes <= MAX_MINUTES_FOR_AVG
+}
 const MIN_PER_SET_ESTIMATE = 2.5
 /** Check-out more than this after last set is treated as leaving the app open, not lifting. */
 const CHECKOUT_SET_GRACE_MS = 20 * 60_000
@@ -301,6 +308,7 @@ export function buildAttendanceReport(
   const streak = computeTrainingStreak(allTrainingDayKeys(trainedDates, sessions))
 
   const durations: number[] = []
+  const durationsForAvg: number[] = []
   const checkInGaps: number[] = []
   const sectionVisits = new Map<string, number>()
   const sectionMinutes = new Map<string, number>()
@@ -308,7 +316,10 @@ export function buildAttendanceReport(
 
   for (const [dayKey, daySessions] of byDay) {
     const mins = sessionDurationMinutes(dayKey, daySessions)
-    if (mins > 0) durations.push(mins)
+    if (mins > 0) {
+      durations.push(mins)
+      if (includeVisitInAverage(mins)) durationsForAvg.push(mins)
+    }
     const gap = checkInToFirstSetMinutes(dayKey, daySessions)
     if (gap !== null) checkInGaps.push(gap)
 
@@ -391,7 +402,7 @@ export function buildAttendanceReport(
 
   const setRest = inferRestFromSets(
     sessions.filter((s) => {
-      const k = calendarDayKey(s.timestamp)
+      const k = gymDayKey(s.timestamp)
       return inRange(k, normalizedRange)
     }),
   )
@@ -424,8 +435,9 @@ export function buildAttendanceReport(
     tone: 'neutral',
   })
 
-  if (durations.length > 0) {
-    const avg = Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+  const avgPool = durationsForAvg.length > 0 ? durationsForAvg : durations
+  if (avgPool.length > 0) {
+    const avg = Math.round(avgPool.reduce((a, b) => a + b, 0) / avgPool.length)
     insights.push({
       icon: '⏱️',
       title: 'Average time in gym',
@@ -519,8 +531,8 @@ export function buildAttendanceReport(
     gymVisits: gymDays.length,
     gymVisitsPerWeek: Number((gymDays.length / weeks).toFixed(1)),
     avgSessionMinutes:
-      durations.length > 0
-        ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+      avgPool.length > 0
+        ? Math.round(avgPool.reduce((a, b) => a + b, 0) / avgPool.length)
         : null,
     longestStreak: streak.longest,
     currentStreak: streak.current,
